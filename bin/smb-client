@@ -1,0 +1,57 @@
+#!/usr/bin/perl
+
+# Copyright (C) 2014 Mikhael Goikhman <migo@freeshell.org>
+
+use strict;
+use warnings;
+use sigtrap qw(die untrapped normal-signals  stack-trace any error-signals);
+
+use Getopt::Long qw(:config no_ignore_case bundling);
+use POSIX qw(strftime);
+
+my $verbose = 0;
+my $username = $ENV{USER} || $ENV{LOGNAME} || 'guest';
+
+sub show_usage (;$) {
+	my $is_error = shift || 0;
+	my $out = $is_error ? \*STDERR : \*STDOUT;
+	my $usage = qq{
+		Usage: $0 [OPTIONS] //server/share
+		Measure performance of operations like download/upload/office.
+
+		Options:
+			-h --help            show this usage
+			-v --verbose         print more messages
+			-U --username u[%p]  SMB username and password (prompted if absent)
+	};
+	$usage =~ s/^\n//; $usage =~ s/^\t\t?//mg;
+	print $out $usage;
+	exit $is_error;
+}
+
+GetOptions(
+	'h|help'        => sub { show_usage(0) },
+	'v|verbose+'    => \$verbose,
+	'U|username'    => \$username,
+) or show_usage(1);
+
+my $sharename = shift || '//localhost/users';
+
+my $password = $username =~ s/%(.*)$// && $1;
+unless ($password) {
+	print STDERR "Enter password for user '$username': ";
+	chomp($password = <>);
+	print STDERR "\n";
+}
+
+my $tree = SMB->connect($sharename,
+	username => $username,
+	password => $password,
+	verbose  => $verbose,
+);
+
+my $files = $tree->find("*");
+
+for my $file (@$files) {
+	printf "%-40s %s\n", $file->name, $file->mtime_string;
+}

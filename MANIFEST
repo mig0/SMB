@@ -1,0 +1,13 @@
+COPYING
+INSTALL
+Makefile.PL
+MANIFEST
+README
+TODO
+bin/smb-client
+bin/smb-server
+lib/SMB/Header.pm
+lib/SMB/Command.pm
+lib/SMB/Parser.pm
+lib/SMB/Packer.pm
+t/0-use.t
