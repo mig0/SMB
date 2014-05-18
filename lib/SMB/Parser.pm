@@ -24,25 +24,39 @@ sub new ($$) {
 	my $class = shift;
 	my $data = shift // "";
 
-	my $self = {
-		data   => $data,
-		offset => 0,
-	};
+	my $self = bless {}, $class;
 
-	return bless $self, $class;
+	return $self->set($data);
 }
 
 sub reset ($) {
 	my $self = shift;
 
 	$self->{offset} = 0;
+
+	return $self;
 }
 
 sub set ($$) {
 	my $self = shift;
 
 	$self->{data} = $_[0];
-	$self->reset;
+	$self->{size} = length($_[0]);
+
+	return $self->reset;
+}
+
+sub _read_string ($$) {
+	my $self = shift;
+	my $n_bytes = shift;
+
+	my $n_avail = $self->{offset} + $n_bytes > $self->{size}
+		? $self->{size} - $self->{offset} : $n_bytes;
+
+	my $str = $self->{offset} > $self->{size} ? '' : substr($self->{data}, $self->{offset}, $n_avail);
+	$self->{offset} += $n_bytes;
+
+	return $str;
 }
 
 my %UINT_MODS = (
@@ -58,16 +72,16 @@ sub uint ($$;$) {
 	my $self = shift;
 	my $n_bytes = shift;
 	my $be_factor = shift() ? -1 : 1;
-	my $i = unpack($UINT_MODS{$be_factor * $n_bytes}, substr($self->{data}, $self->{offset}, $n_bytes));
-	$self->{offset} += $n_bytes;
-	return $i;
+
+	return unpack($UINT_MODS{$be_factor * $n_bytes}, $self->_read_string($n_bytes));
 }
 
 sub bytes ($$) {
 	my $self = shift;
 	my $n_bytes = shift;
-	my $bytes = substr($self->{data}, $self->{offset}, $n_bytes);
-	$self->{offset} += $n_bytes;
+
+	my $bytes = $self->_read_string($n_bytes);
+
 	return wantarray ? split('', $bytes) : $bytes;
 }
 
