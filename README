@@ -1,8 +1,8 @@
-This perl library implements parser and packer for packets of
-CIFS (Common Internet File System) network protocol.
+This pure perl library allows to receive and send commands using SMB
+network protocol (also called CIFS - Common Internet File System).
 
-Currently only protocol SMB 2 is supported.
-If needed, SMB 1 and SMB 3 may be supported in te future too.
+Currently the intention is to support SMB protocol version 2.
+Support for SMB 1 and SMB 3 may be added in the future.
 
 Author:
 	Mikhael Goikhman <migo@freeshell.org>
