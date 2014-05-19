@@ -20,19 +20,31 @@ package SMB::v1::Command;
 
 use parent 'SMB::Command';
 
-sub new ($%) {
+use SMB::v1::Header;
+
+sub new ($$%) {
 	my $class = shift;
+	my $header = shift;
 	my %options = @_;
 
 	die "Invalid sub-class $class, should be SMB::v1::Command::*"
 		unless $class =~ /^SMB::v1::Command::(\w+)/;
 
+	die "Invalid header $header, should be isa SMB::v1::Header"
+		unless $header && $header->isa('SMB::v1::Header');
+
 	my $self = $class->SUPER::new(
-		1, $1,
+		1, $1, $header,
 		%options,
 	);
 
 	return $self;
+}
+
+sub is_response ($) {
+	my $self = shift;
+
+	return $self->header->{flags} & SMB::v1::Header::FLAGS_RESPONSE ? 1 : 0;
 }
 
 1;

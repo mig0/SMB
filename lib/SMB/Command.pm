@@ -20,19 +20,23 @@ package SMB::Command;
 
 use parent 'SMB';
 
-sub new ($$$%) {
+sub new ($$$$%) {
 	my $class = shift;
-	my $smb  = shift || die "No smb attribute in $class constructor\n";
-	my $name = shift || die "No name attribute in $class constructor\n";
+	my $smb    = shift || die "No smb parameter in $class constructor\n";
+	my $name   = shift || die "No name parameter in $class constructor\n";
+	my $header = shift || die "No header parameter in $class constructor\n";
 	my %options = @_;
 
-	my $self = {
+	my $self = bless {
 		%options,
 		smb  => $smb,
 		name => $name,
-	};
+		header => $header,
+	}, $class;
 
-	bless $self, $class;
+	$self->init;
+
+	return $self;
 }
 
 sub is ($$) {
@@ -44,5 +48,33 @@ sub is ($$) {
 
 sub is_smb1 ($) { $_[0]->smb <= 1 }
 sub is_smb2 ($) { $_[0]->smb >= 2 }
+
+sub status ($) { $_[0]->header->{status} }
+
+# stub methods to be overloaded
+
+sub parse ($$%) {
+	my $self = shift;
+	my $parser = shift;
+
+	return $self;
+}
+
+sub pack ($$%) {
+	my $self = shift;
+	my $parser = shift;
+
+	return $self;
+}
+
+sub set ($%) {
+	my $self = shift;
+	my %values = @_;
+
+	$self->{$_} = $values{$_} for keys %values;
+}
+
+sub init ($) {
+}
 
 1;
