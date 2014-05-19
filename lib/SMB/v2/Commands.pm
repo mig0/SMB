@@ -51,6 +51,28 @@ our %command_aliases = (
 	'GetInfo' => 'QueryInfo',
 );
 
+our @command_struct_sizes = (
+	[ 36, 65 ],  # 0x00
+	[ 25,  9 ],  # 0x01
+	[  4,  4 ],  # 0x02
+	[  9, 16 ],  # 0x03
+	[  4,  4 ],  # 0x04
+	[ 57, 89 ],  # 0x05
+	[ 24, 60 ],  # 0x06
+	[ 24,  4 ],  # 0x07
+	[ 49, 17 ],  # 0x08
+	[ 49, 17 ],  # 0x09
+	[ 48,  4 ],  # 0x0A
+	[ 57, 49 ],  # 0x0B
+	[  4,  0 ],  # 0x0C
+	[  4,  4 ],  # 0x0D
+	[ 33,  9 ],  # 0x0E
+	[ 32,  9 ],  # 0x0F
+	[ 41,  9 ],  # 0x10
+	[ 33,  2 ],  # 0x11
+	[ 24, 24 ],  # 0x12  # or [ 36, 44 ]
+);
+
 our $MIN_MESSAGE_SIZE = 64;
 
 sub parse ($$) {
@@ -116,6 +138,97 @@ sub parse ($$) {
 	}
 
 	return $command;
+}
+
+sub pack ($$$%) {
+	my $class = shift;
+	my $packer = shift;
+	my $command = shift;
+	my %options = @_;
+
+	my $header = $command->header;
+	my $status = $command->status;
+
+	my $is_response = $options{is_response} // $command->is_response;
+	my $struct_size = $options{struct_size} // $command_struct_sizes[$header->{code}][$is_response] // $header->{struct_size};
+	my $is_chained  = $options{is_chained};
+	my $is_first    = $options{is_first};
+	my $is_last     = $options{is_last};
+
+	my $flags = $header->{flags};
+	if ($is_response) {
+		$flags |=  SMB::v2::Header::FLAGS_RESPONSE;
+	} else {
+		$flags &= ~SMB::v2::Header::FLAGS_RESPONSE;
+	}
+	if ($is_chained && !$is_first) {
+		$flags |=  SMB::v2::Header::FLAGS_CHAINED;
+	} else {
+		$flags &= ~SMB::v2::Header::FLAGS_CHAINED;
+	}
+
+	my $mid_low  = $header->{mid} & 0xffffffff;
+	my $mid_high = $header->{mid} >> 32;
+	my $uid_low  = $header->{uid} & 0xffffffff;
+	my $uid_high = $header->{uid} >> 32;
+	my $aid_low  = $header->{aid} & 0xffffffff;
+	my $aid_high = $header->{aid} >> 32;
+
+	# skip NetBIOS header (length will be filled later)
+	if (!$is_chained || $is_first) {
+		$packer->store('netbios-header');
+		$packer->skip(4);
+	}
+
+	# pack SMB2 header
+	$packer->store('smb-header');
+	$packer->bytes($header_stamp);  # SMB2 magic signature
+	$packer->uint16(64);            # header size
+	$packer->uint16($header->{credit_charge});
+	$packer->uint32($is_response ? $status : 0);
+	$packer->uint16($header->{code});
+	$packer->uint16($header->{credits} || 1);
+	$packer->uint32($flags);
+	$packer->store('next-command');
+	$packer->uint32(0);
+	$packer->uint32($mid_low);
+	$packer->uint32($mid_high);
+	# aid or pid + tid
+	if ($flags & SMB::v2::Header::FLAGS_ASYNC_COMMAND) {
+		$packer->uint32($aid_low);
+		$packer->uint32($aid_high);
+	} else {
+		$packer->uint32(0);  # no pid in SMB2 spec
+		$packer->uint32($header->{tid});
+	}
+	$packer->uint32($uid_low);
+	$packer->uint32($uid_high);
+	$packer->bytes("\0" x 16);      # no message signing for now
+
+	$packer->store('header-end');
+	$packer->uint16($struct_size);
+	$command->pack($packer, $is_response);
+
+	my $size = $packer->get_stored_diff('header-end');
+	my $size0 = $struct_size & ~1;
+	die "SMB2 command $command->{name} pack produced size $size, expected $size0\n"
+		if $size > $size0;
+	$packer->zero($size0 - $size) if $size0 > $size;
+
+	$packer->store('end');
+	if ($is_chained && !$is_last) {
+		my $command_size = $packer->get_stored_diff('header');
+		my $command_size_padded = ($command_size + 7) & ~7;
+		$packer->zero($command_size_padded - $command_size);
+		$packer->store('end');
+		$packer->restore('next-command');
+		$packer->uint32($command_size_padded);
+	}
+	if (!$is_chained || $is_last) {
+		$packer->restore('netbios-header');
+		$packer->uint32_be(-$packer->get_stored_diff('end') - 4);
+	}
+	$packer->restore('end');
 }
 
 1;
