@@ -33,19 +33,19 @@ use constant {
 	FLAGS_DFS => 0x10000000,
 };
 
-sub new ($%) {   
-   my $class = shift;
-   my %options = @_;
+sub new ($%) {
+	my $class = shift;
+	my %options = @_;
 
-   my $self = $class->SUPER::new(
+	my $self = $class->SUPER::new(
 		aid           => delete $options{aid} || 0,
 		credits       => delete $options{credits} || 0,
 		credit_charge => delete $options{credit_charge} || 0,
-		struct_size   => delete $options{struct_size} || 0,
+		struct_size   => delete $options{struct_size} || 2,
 		%options,
 	);
 
-   bless $self, $class;
+	return $self;
 }
 
 sub is_signed ($) {
@@ -53,7 +53,7 @@ sub is_signed ($) {
 	my $signature = $self->{signature};
 
 	return ref($signature) eq 'ARRAY' && @$signature == 16 &&
-		(join('', $signature) ne '\0' x 16) &&
+		(join('', $signature) ne "\0" x 16) &&
 		($self->{flags} & FLAGS_SIGNED) != 0;
 }
 

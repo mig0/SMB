@@ -37,17 +37,17 @@ use constant {
 	FLAGS2_NT_STATUS => 0x4000,
 };
 
-sub new ($%) {   
-   my $class = shift;
-   my %options = @_;
+sub new ($%) {
+	my $class = shift;
+	my %options = @_;
 
-   my $self = $class->SUPER::new(
+	my $self = $class->SUPER::new(
 		pid       => delete $options{pid} || 0,
 		flags2    => delete $options{flags2} || 0,
 		%options,
 	);
 
-   bless $self, $class;
+	return $self;
 }
 
 sub is_signed ($) {
@@ -55,7 +55,7 @@ sub is_signed ($) {
 	my $signature = $self->{signature};
 
 	return ref($signature) eq 'ARRAY' && @$signature == 8 &&
-		(join('', $signature) ne '\0' x 8) &&
+		(join('', $signature) ne "\0" x 8) &&
 		($self->{flags2} & FLAGS2_SECURITY_SIGNATURE) != 0;
 }
 

@@ -22,12 +22,16 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
+	$options{code} // die "No code for $class";
+	$options{mid}  // die "No message id for $class";
+
 	my $self = {
-		code      => $options{code} // die "No code",
+		%options,
+		code      => $options{code},
 		status    => $options{status} || 0,
 		uid       => $options{uid} || 0,
 		tid       => $options{tid} || 0,
-		mid       => $options{mid} // die "No message id",
+		mid       => $options{mid},
 		flags     => $options{flags} || 0,
 		signature => $options{signature},
 	};
