@@ -9,6 +9,8 @@ use sigtrap qw(die untrapped normal-signals  stack-trace any error-signals);
 use Getopt::Long qw(:config no_ignore_case bundling);
 use POSIX qw(strftime);
 
+use SMB::Client;
+
 my $verbose = 0;
 my $username = $ENV{USER} || $ENV{LOGNAME} || 'guest';
 
@@ -44,12 +46,14 @@ unless ($password) {
 	print STDERR "\n";
 }
 
-my $tree = SMB->connect($sharename,
+my $client = SMB::Client->new(
+	$sharename,
 	username => $username,
 	password => $password,
 	verbose  => $verbose,
 );
 
+my $tree = $client->connect;
 my $files = $tree->find("*");
 
 for my $file (@$files) {
