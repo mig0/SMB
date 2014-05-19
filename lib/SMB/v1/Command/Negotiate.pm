@@ -21,10 +21,8 @@ package SMB::v1::Command::Negotiate;
 use parent 'SMB::v1::Command';
 
 sub parse ($$%) {
-	my $class = shift;
+	my $self = shift;
 	my $parser = shift;
-
-	my $self = $class->SUPER::new();
 
 	return $self;
 }

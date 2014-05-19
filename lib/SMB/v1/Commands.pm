@@ -18,8 +18,9 @@ use warnings;
 
 package SMB::v1::Commands;
 
-use parent 'SMB';
 use SMB::v1::Header;
+
+our $header_stamp = "\xffSMB";
 
 our @command_names = (
 	'CreateDirectory',        # 0x00
@@ -280,17 +281,18 @@ our @command_names = (
 	'',                       # 0xFF
 );
 
+our $MIN_MESSAGE_SIZE = 33;
+
 sub parse ($$) {
 	my $class = shift;
 	my $parser = shift || die;
 
-#	my $self = {
-#		parser => $parser,
-#	};
-#
-#	bless $self, $class;
+	if ($parser->size < $MIN_MESSAGE_SIZE) {
+		warn sprintf "Too short message to parse (%d, should be at least %d)\n", $parser->size, $MIN_MESSAGE_SIZE;
+		return;
+	}
 
-	# parse header following the SMB1 magic signature "\0xffSMB"
+	# parse header following the SMB1 stamp "\xffSMB"
 	my $code   = $parser->uint8;
 	my $status = $parser->uint32;
 	my $flags  = $parser->uint8;
@@ -322,7 +324,8 @@ sub parse ($$) {
 		my $command_filename = "SMB/v1/Command/$command_name.pm";
 		require $command_filename unless $INC{$command_filename};
 
-		$command = $command_class->parse($parser);
+		$command = $command_class->new($header)->parse($parser)
+			or warn sprintf "Failed to parse SMB1 command 0x%x ($command_name)\n", $code;
 	} else {
 		warn sprintf "Got unexisting SMB1 command 0x%x\n", $code;
 	}

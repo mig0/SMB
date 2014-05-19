@@ -46,6 +46,9 @@ sub set ($$) {
 	return $self->reset;
 }
 
+sub data { $_[0]->{data} }
+sub size { $_[0]->{size} }
+
 sub _read_string ($$) {
 	my $self = shift;
 	my $n_bytes = shift;

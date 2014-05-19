@@ -16,6 +16,8 @@
 use strict;
 use warnings;
 
+use integer;
+
 package SMB;
 
 use SMB::Parser;
@@ -99,8 +101,8 @@ sub pack_uint8  { $_[0]->packer->uint8($_[1]);  }
 sub pack_uint16 { $_[0]->packer->uint16($_[1]); }
 sub pack_uint32 { $_[0]->packer->uint32($_[1]); }
 sub pack_bytes  { $_[0]->packer->bytes($_[1]); }
-sub pack_smb1   { SMB::v1::Commands->pack($_[0]->packer) }
-sub pack_smb2   { SMB::v2::Commands->pack($_[0]->packer) }
+sub pack_smb1   { SMB::v1::Commands->pack(shift()->packer, shift, @_) }
+sub pack_smb2   { SMB::v2::Commands->pack(shift()->packer, shift, @_) }
 
 our $AUTOLOAD;
 

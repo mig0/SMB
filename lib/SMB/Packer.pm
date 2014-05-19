@@ -38,17 +38,14 @@ sub reset ($) {
 	return $self;
 }
 
-sub size ($) {
-	my $self = shift;
+sub data { $_[0]->{data} }
+sub size { length($_[0]->{data}) }
 
-	return length($self->{data});
-}
-
-sub null ($$) {
+sub zero ($$) {
 	my $self = shift;
 	my $n_bytes = shift // die;
 
-	substr($self->{data}, $self->{offset}, $n_bytes) = '\0' x $n_bytes;
+	substr($self->{data}, $self->{offset}, $n_bytes) = "\0" x $n_bytes;
 
 	return $self->skip($n_bytes);
 }
@@ -60,7 +57,7 @@ sub skip ($$) {
 	my $n_avail = $self->{offset} + $n_bytes > $self->size
 		? $self->size - $self->{offset} : $n_bytes;
 
-	$self->null($n_bytes - $n_avail) if $n_avail < $n_bytes;
+	$self->zero($n_bytes - $n_avail) if $n_avail < $n_bytes;
 
 	$self->{offset} += $n_avail;
 
@@ -85,6 +82,13 @@ sub restore ($$) {
 	return $self;
 }
 
+sub get_stored_diff ($$) {
+	my $self = shift;
+	my $name = shift // '';
+
+	return $self->{offset} - ($self->{stored}{$name} || 0);
+}
+
 my %UINT_MODS = (
 	+1 => 'C',
 	+2 => 'v',
@@ -107,6 +111,8 @@ sub bytes ($$) {
 	my $self = shift;
 	my $data = shift;
 
+	$data = join('', @$data) if ref($data) eq 'ARRAY';
+
 	substr($self->{data}, $self->{offset}, length($data)) = $data;
 	$self->{offset} += length($data);
 
@@ -118,5 +124,6 @@ sub uint16    { uint($_[0], 2, 0, $_[1]); }
 sub uint32    { uint($_[0], 4, 0, $_[1]); }
 sub uint16_be { uint($_[0], 2, 1, $_[1]); }
 sub uint32_be { uint($_[0], 4, 1, $_[1]); }
+sub uint64    { uint32($_[0], $_[1] & 0xffffffff); uint32($_[0], $_[1] >> 32); }
 
 1;

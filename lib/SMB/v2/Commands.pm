@@ -18,8 +18,9 @@ use warnings;
 
 package SMB::v2::Commands;
 
-use parent 'SMB';
 use SMB::v2::Header;
+
+our $header_stamp = "\xfeSMB";
 
 our @command_names = (
 	'Negotiate',       # 0x00
@@ -50,17 +51,18 @@ our %command_aliases = (
 	'GetInfo' => 'QueryInfo',
 );
 
+our $MIN_MESSAGE_SIZE = 64;
+
 sub parse ($$) {
 	my $class = shift;
 	my $parser = shift || die;
 
-#	my $self = {
-#		parser => $parser,
-#	};
-#
-#	bless $self, $class;
+	if ($parser->size < $MIN_MESSAGE_SIZE) {
+		warn sprintf "Too short message to parse (%d, should be at least %d)\n", $parser->size, $MIN_MESSAGE_SIZE;
+		return;
+	}
 
-	# parse header following the SMB2 magic signature "\0xfeSMB"
+	# parse header following the SMB2 stamp "\xfeSMB"
 	$parser->uint16;  # skip reserved
 	my $credit_charge = $parser->uint16;
 	my $status = $parser->uint32;
@@ -73,13 +75,10 @@ sub parse ($$) {
 	my $aid_l = 0;
 	my $aid_h = 0;
 	my $tid   = 0;
-	if ($flags & SMB::v2::Header::FLAGS_ASYNC_COMMAND)
-	{
+	if ($flags & SMB::v2::Header::FLAGS_ASYNC_COMMAND) {
 		$aid_l = $parser->uint32;
 		$aid_h = $parser->uint32;
-	}
-	else
-	{
+	} else {
 		$parser->uint32;  # reserved (according to spec), not pid
 		$tid = $parser->uint32;
 	}
@@ -88,7 +87,7 @@ sub parse ($$) {
 	my @sign  = $parser->bytes(16);
 	my $struct_size = $parser->uint16;
 
-	my $header = SMB::v1::Header->new(
+	my $header = SMB::v2::Header->new(
 		code      => $code,
 		status    => $status,
 		uid       => $uid_h << 32 + $uid_l,
@@ -110,7 +109,8 @@ sub parse ($$) {
 		my $command_filename = "SMB/v2/Command/$command_name.pm";
 		require $command_filename unless $INC{$command_filename};
 
-		$command = $command_class->parse($parser);
+		$command = $command_class->new($header)->parse($parser)
+			or warn sprintf "Failed to parse SMB2 command 0x%x ($command_name)\n", $code;
 	} else {
 		warn sprintf "Got unexisting SMB2 command 0x%x\n", $code;
 	}

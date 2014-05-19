@@ -60,9 +60,10 @@ sub parse ($$%) {
 	return $self;
 }
 
-sub pack ($$%) {
+sub pack ($$$%) {
 	my $self = shift;
 	my $parser = shift;
+	my $is_response = shift;
 
 	return $self;
 }
