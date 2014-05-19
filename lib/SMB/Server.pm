@@ -26,7 +26,6 @@ use parent 'SMB';
 use IO::Socket;
 use IO::Select;
 use SMB::Connection;
-#use SMB::Commands;
 use SMB::v2::Command::Negotiate;
 
 sub new ($%) {
@@ -69,6 +68,13 @@ sub on_command ($$$) {
 	if ($command->is_smb1) {
 		if ($command->is('Negotiate') && $command->supports_protocol(2)) {
 			$command = SMB::v2::Command::Negotiate->new_from_v1($command);
+		}
+	}
+
+	if ($command->is_smb2) {
+		if ($command->is('Negotiate')) {
+			$connection->send_command($command);
+			return;
 		}
 	}
 

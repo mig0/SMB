@@ -62,8 +62,7 @@ sub recv_command ($) {
 	}
 	my ($packet_type, $packet_flags, $packet_len) = unpack('CCn', $data);
 	$self->msg("$header_label type=%x flags=%x len=%u", $packet_type, $packet_flags, $packet_len);
-	if ($packet_type != 0 || $packet_flags > 1)
-	{
+	if ($packet_type != 0 || $packet_flags > 1) {
 		$self->err("Only supported $header_label with type=0 flags=0|1");
 		return;
 	}
@@ -89,6 +88,27 @@ sub recv_command ($) {
 	return $is_smb1
 		? $self->parse_smb1
 		: $self->parse_smb2;
+}
+
+sub send_command ($$) {
+	my $self = shift;
+	my $command = shift;
+
+	my $is_smb1 = $command->is_smb1;
+	$self->msg("Sending SMB%d %s", $is_smb1 ? 1 : 2, $command->name);
+
+	$is_smb1
+		? $self->pack_smb1($command, is_response => 1)
+		: $self->pack_smb2($command, is_response => 1);
+
+	my $data = $self->packer->data;
+	my $size = $self->packer->size;
+	$self->mem($data, "NetBIOS Session Service Packet");
+
+	if (!$self->socket->write($data, $size)) {
+		$self->err("Can't write full packet");
+		return;
+	}
 }
 
 sub log ($$$) {
