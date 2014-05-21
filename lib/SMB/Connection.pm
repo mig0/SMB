@@ -55,13 +55,13 @@ sub recv_command ($) {
 	my $socket = $self->socket;
 	my ($len, $data);
 	my $header_label = 'NetBIOS Session Service header';
-	$len = $socket->read($data, 4) // 0;
+	$len = $socket->read($data, 4) //
+		return $self->err("Read failed: $!");
 	if ($len != 4) {
-		$self->err("Can't read $header_label");
+		$self->err("Can't read $header_label (got $len bytes)");
 		return;
 	}
 	my ($packet_type, $packet_flags, $packet_len) = unpack('CCn', $data);
-	$self->msg("$header_label type=%x flags=%x len=%u", $packet_type, $packet_flags, $packet_len);
 	if ($packet_type != 0 || $packet_flags > 1) {
 		$self->err("Only supported $header_label with type=0 flags=0|1");
 		return;
@@ -72,7 +72,7 @@ sub recv_command ($) {
 		$self->err("Can't read full packet (expected $packet_len, got $len bytes)");
 		return;
 	}
-	$self->parser_set($data);
+	$self->parser->set($data);
 
 	my $smb_num = $self->parse_uint8;
 	my $smb_str = $self->parse_bytes(3);
@@ -82,28 +82,36 @@ sub recv_command ($) {
 		return;
 	}
 	my $is_smb1 = $smb_num == 0xff;
-	$self->msg("Got SMB%d", $is_smb1 ? 1 : 2);
-	$self->mem($data, "Packet");
+	$self->mem($data, "Received SMB Packet");
 
-	return $is_smb1
+	my $command = $is_smb1
 		? $self->parse_smb1
 		: $self->parse_smb2;
+
+	if ($command) {
+		$self->msg("Parsed %s", $command->dump);
+	} else {
+		$self->err("Failed to parse SMB%d packet", $is_smb1 ? 1 : 2);
+	}
+
+	return $command;
 }
 
 sub send_command ($$) {
 	my $self = shift;
 	my $command = shift;
 
-	my $is_smb1 = $command->is_smb1;
-	$self->msg("Sending SMB%d %s", $is_smb1 ? 1 : 2, $command->name);
+	$self->msg("Sending %s", $command->dump);
 
-	$is_smb1
+	$self->packer->reset;
+
+	$command->is_smb1
 		? $self->pack_smb1($command, is_response => 1)
 		: $self->pack_smb2($command, is_response => 1);
 
 	my $data = $self->packer->data;
 	my $size = $self->packer->size;
-	$self->mem($data, "NetBIOS Session Service Packet");
+	$self->mem($data, "- NetBIOS Packet");
 
 	if (!$self->socket->write($data, $size)) {
 		$self->err("Can't write full packet");

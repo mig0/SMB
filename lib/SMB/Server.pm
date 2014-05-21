@@ -78,7 +78,7 @@ sub on_command ($$$) {
 		}
 	}
 
-	$connection->msg("Got command $command, ignoring");
+	$self->msg("Command $command ignored; missing functionality");
 }
 
 sub run ($) {
