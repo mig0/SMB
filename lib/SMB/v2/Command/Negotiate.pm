@@ -40,7 +40,10 @@ sub new_from_v1 ($$) {
 
 	my $self = $class->SUPER::new($header);
 
-	$self->set(security_mode => $security_mode);
+	$self->set(
+		security_mode => $security_mode,
+		dialects => [ 0x0202, 0x02ff ],
+	);
 
 	return $self;
 }
@@ -51,7 +54,7 @@ sub init ($) {
 		dialect           => 0x0202,
 		security_mode     => 0,
 		capabilities      => 0x7,
-		client_guid       => [ ("\0") x 16 ],
+		client_guid       => [ ("\5") x 16 ],
 		max_transact_size => 1 << 20,
 		max_read_size     => 1 << 16,
 		max_write_size    => 1 << 16,
@@ -71,9 +74,12 @@ sub pack ($$$) {
 	my $is_response = shift;
 
 	if ($is_response) {
+		my $security_blob =
+			"\x60\x28\x06\x06\x2b\x06\x01\x05\x05\x02\xa0\x1e\x30\x1c\xa0\x1a\x30\x18\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x1e\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a";
+
 		$packer
 			->uint16($self->security_mode)
-			->uint16($self->dialect)
+			->uint16($self->dialects->[1] || $self->dialect)
 			->uint16(0)  # reserved
 			->bytes ($self->client_guid)
 			->uint32($self->capabilities)
@@ -82,6 +88,10 @@ sub pack ($$$) {
 			->uint32($self->max_write_size)
 			->uint64(0)  # current time
 			->uint64(0)  # boot time
+			->uint16($packer->get_stored_diff('smb-header') + 4 + 4)
+			->uint16(length($security_blob))
+			->uint32(0)  # padding
+			->bytes ($security_blob)
 		;
 	} else {
 		my $dialects = $self->dialects;
