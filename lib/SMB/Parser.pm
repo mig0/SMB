@@ -19,6 +19,7 @@ use strict;
 use warnings;
 
 use bytes;
+use if 1 << 32 == 1, 'bigint';  # support native uint64 on 32-bit platforms
 
 sub new ($$) {
 	my $class = shift;
@@ -93,5 +94,6 @@ sub uint16    { uint($_[0], 2   ); }
 sub uint32    { uint($_[0], 4   ); }
 sub uint16_be { uint($_[0], 2, 1); }
 sub uint32_be { uint($_[0], 4, 1); }
+sub uint64    { uint32($_[0]) + (uint32($_[0]) << 32); }
 
 1;
