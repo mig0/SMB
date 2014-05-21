@@ -92,32 +92,28 @@ sub parse ($$) {
 	my $credits = $parser->uint16;
 	my $flags  = $parser->uint32;
 	my $offset = $parser->uint32;  # offset of the next chain command or 0
-	my $mid_l = $parser->uint32;
-	my $mid_h = $parser->uint32;
-	my $aid_l = 0;
-	my $aid_h = 0;
-	my $tid   = 0;
+	my $mid = $parser->uint64;
+	my $aid = 0;
+	my $tid = 0;
 	if ($flags & SMB::v2::Header::FLAGS_ASYNC_COMMAND) {
-		$aid_l = $parser->uint32;
-		$aid_h = $parser->uint32;
+		$aid = $parser->uint64;
 	} else {
 		$parser->uint32;  # reserved (according to spec), not pid
 		$tid = $parser->uint32;
 	}
-	my $uid_l = $parser->uint32;
-	my $uid_h = $parser->uint32;
-	my @sign  = $parser->bytes(16);
+	my $uid = $parser->uint64;
+	my @sign = $parser->bytes(16);
 	my $struct_size = $parser->uint16;
 
 	my $header = SMB::v2::Header->new(
 		code      => $code,
 		status    => $status,
-		uid       => $uid_h << 32 + $uid_l,
+		uid       => $uid,
 		tid       => $tid,
-		mid       => $mid_h << 32 + $mid_l,
+		mid       => $mid,
 		signature => \@sign,
 		flags     => $flags,
-		aid       => $aid_h << 32 + $aid_l,
+		aid       => $aid,
 		credits   => $credits,
 		credit_charge => $credit_charge,
 		struct_size => $struct_size,
@@ -209,10 +205,11 @@ sub pack ($$$%) {
 	$packer->uint16($struct_size);
 	$command->pack($packer, $is_response);
 
+	my $payload_allowed = $struct_size % 2;
 	my $size = $packer->get_stored_diff('header-end');
 	my $size0 = $struct_size & ~1;
 	die "SMB2 command $command->{name} pack produced size $size, expected $size0\n"
-		if $size > $size0;
+		if $size > $size0 && !$payload_allowed;
 	$packer->zero($size0 - $size) if $size0 > $size;
 
 	$packer->store('end');

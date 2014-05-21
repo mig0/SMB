@@ -58,7 +58,7 @@ sub log ($$@) {
 }
 
 sub msg ($@) { shift()->log(0, @_) }
-sub err ($@) { shift()->log(1, @_) }
+sub err ($@) { shift()->log(1, @_); return }
 
 my $MAX_DUMP_BYTES = 8 * 1024;
 my $dump_line_format = "%03x | 00 53 54 52 49 4E 47 aa  aa aa aa aa aa aa       | _STRING. ......   |\n";
@@ -70,7 +70,7 @@ sub mem ($$;$) {
 	return if $self->disable_log;
 
 	my $len = length($data);
-	$self->msg(sprintf "%s (%lu bytes%s):", $label, $len, $len > $MAX_DUMP_BYTES ? ", shorten" : "");
+	$self->msg(sprintf("%s (%lu bytes%s):", $label, $len, $len > $MAX_DUMP_BYTES ? ", shorten" : ""), @_);
 	$len = $MAX_DUMP_BYTES if $len > $MAX_DUMP_BYTES;
 
 	for (my $n = 0; $n < ($len + 15) / 16; $n++) {
@@ -82,12 +82,6 @@ sub mem ($$;$) {
 		}
 		printf $dump_line_format, $n;
 	}
-}
-
-sub parser_set ($$) {
-	my $self = shift;
-
-	$self->parser->set($_[0]);
 }
 
 sub parse_uint8  { $_[0]->parser->uint8;  }
