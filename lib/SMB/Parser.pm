@@ -19,7 +19,7 @@ use strict;
 use warnings;
 
 use bytes;
-use if 1 << 32 == 1, 'bigint';  # support native uint64 on 32-bit platforms
+use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
 
 sub new ($$) {
 	my $class = shift;
