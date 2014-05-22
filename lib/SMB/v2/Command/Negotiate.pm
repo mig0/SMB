@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::v2::Command::Negotiate;
+
 use strict;
 use warnings;
-
-package SMB::v2::Command::Negotiate;
 
 use parent 'SMB::v2::Command';
 
@@ -74,7 +74,7 @@ sub pack ($$$) {
 	my $is_response = shift;
 
 	if ($is_response) {
-		my $security_blob =
+		my $security_buffer =
 			"\x60\x28\x06\x06\x2b\x06\x01\x05\x05\x02\xa0\x1e\x30\x1c\xa0\x1a\x30\x18\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x1e\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a";
 
 		$packer
@@ -88,10 +88,10 @@ sub pack ($$$) {
 			->uint32($self->max_write_size)
 			->uint64(0)  # current time
 			->uint64(0)  # boot time
-			->uint16($packer->get_stored_diff('smb-header') + 4 + 4)
-			->uint16(length($security_blob))
-			->uint32(0)  # padding
-			->bytes ($security_blob)
+			->uint16($packer->get_stored_diff('smb-header') + 8)
+			->uint16(length($security_buffer))
+			->uint32(0)  # reserved2
+			->bytes ($security_buffer)
 		;
 	} else {
 		my $dialects = $self->dialects;
