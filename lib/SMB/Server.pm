@@ -13,13 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::Server;
+
 use strict;
 use warnings;
-
-use bytes;
-use integer;
-
-package SMB::Server;
 
 use parent 'SMB';
 
@@ -72,10 +69,12 @@ sub on_command ($$$) {
 	}
 
 	if ($command->is_smb2) {
-		if ($command->is('Negotiate')) {
-			$connection->send_command($command);
-			return;
+		if ($command->is('SessionSetup')) {
+			$command->header->{uid} = $connection->id;
 		}
+		$command->prepare_response;
+		$connection->send_command($command);
+		return;
 	}
 
 	$self->msg("Command $command ignored; missing functionality");

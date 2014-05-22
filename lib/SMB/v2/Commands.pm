@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::v2::Commands;
+
 use strict;
 use warnings;
-
-package SMB::v2::Commands;
 
 use SMB::v2::Header;
 
@@ -170,13 +170,6 @@ sub pack ($$$%) {
 		$flags &= ~SMB::v2::Header::FLAGS_CHAINED;
 	}
 
-	my $mid_low  = $header->{mid} & 0xffffffff;
-	my $mid_high = $header->{mid} >> 32;
-	my $uid_low  = $header->{uid} & 0xffffffff;
-	my $uid_high = $header->{uid} >> 32;
-	my $aid_low  = $header->{aid} & 0xffffffff;
-	my $aid_high = $header->{aid} >> 32;
-
 	# skip NetBIOS header (length will be filled later)
 	if (!$is_chained || $is_first) {
 		$packer->store('netbios-header');
@@ -194,18 +187,15 @@ sub pack ($$$%) {
 	$packer->uint32($flags);
 	$packer->store('next-command');
 	$packer->uint32(0);
-	$packer->uint32($mid_low);
-	$packer->uint32($mid_high);
+	$packer->uint64($header->{mid});
 	# aid or pid + tid
 	if ($flags & SMB::v2::Header::FLAGS_ASYNC_COMMAND) {
-		$packer->uint32($aid_low);
-		$packer->uint32($aid_high);
+		$packer->uint64($header->{aid});
 	} else {
 		$packer->uint32(0);  # no pid in SMB2 spec
 		$packer->uint32($header->{tid});
 	}
-	$packer->uint32($uid_low);
-	$packer->uint32($uid_high);
+	$packer->uint64($header->{uid});
 	$packer->bytes("\0" x 16);      # no message signing for now
 
 	$packer->store('header-end');
