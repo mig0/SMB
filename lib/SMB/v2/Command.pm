@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::v2::Command;
+
 use strict;
 use warnings;
-
-package SMB::v2::Command;
 
 use parent 'SMB::Command';
 
@@ -45,6 +45,13 @@ sub is_response ($) {
 	my $self = shift;
 
 	return $self->header->{flags} & SMB::v2::Header::FLAGS_RESPONSE ? 1 : 0;
+}
+
+sub prepare_response ($) {
+	my $self = shift;
+
+	$self->header->{flags} &= SMB::v2::Header::FLAGS_RESPONSE;
+	$self->header->{credits} = 31 if $self->header->{credits} > 31;
 }
 
 1;
