@@ -125,7 +125,14 @@ sub parse ($$) {
 	if ($command_name) {
 		my $command_class = "SMB::v2::Command::$command_name";
 		my $command_filename = "SMB/v2/Command/$command_name.pm";
-		require $command_filename unless $INC{$command_filename};
+		unless ($INC{$command_filename} || $::_INC{$command_filename}) {
+			# auto-load or auto-create requested sub-class
+			if (!eval { require $command_filename; 1; }) {
+				no strict 'refs';
+				@{"${command_class}::ISA"} = qw(SMB::v2::Command);
+				$::_INC{$command_filename} = 1;
+			}
+		}
 
 		$command = $command_class->new($header)->parse($parser)
 			or warn sprintf "Failed to parse SMB2 command 0x%x ($command_name)\n", $code;
