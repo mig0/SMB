@@ -82,14 +82,14 @@ sub recv_command ($) {
 		return;
 	}
 	my $is_smb1 = $smb_num == 0xff;
-	$self->mem($data, "Received SMB Packet");
+	$self->mem($data, "<- SMB Packet");
 
 	my $command = $is_smb1
 		? $self->parse_smb1
 		: $self->parse_smb2;
 
 	if ($command) {
-		$self->msg("Parsed %s", $command->dump);
+		$self->msg("%s", $command->dump);
 	} else {
 		$self->err("Failed to parse SMB%d packet", $is_smb1 ? 1 : 2);
 	}
@@ -101,7 +101,7 @@ sub send_command ($$) {
 	my $self = shift;
 	my $command = shift;
 
-	$self->msg("Sending %s", $command->dump);
+	$self->msg("%s", $command->dump);
 
 	$self->packer->reset;
 
@@ -111,7 +111,7 @@ sub send_command ($$) {
 
 	my $data = $self->packer->data;
 	my $size = $self->packer->size;
-	$self->mem($data, "- NetBIOS Packet");
+	$self->mem($data, "-> NetBIOS Packet");
 
 	if (!$self->socket->write($data, $size)) {
 		$self->err("Can't write full packet");

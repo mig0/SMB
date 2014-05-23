@@ -81,8 +81,9 @@ sub init ($) {
 sub dump ($) {
 	my $self = shift;
 
-	return sprintf "SMB%d [%s] mid=%u uid=%x tid=%02x%s",
+	return sprintf "SMB%d [%s %s] mid=%u uid=%x tid=%02x%s",
 		$self->smb, $self->name,
+		$self->is_response ? "Response" : "Request ",
 		$self->header->{mid},
 		$self->header->{uid},
 		$self->header->{tid},
