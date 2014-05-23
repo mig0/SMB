@@ -53,12 +53,11 @@ sub prepare_response ($) {
 	$self->header->{uid} ||= rand(1000000);
 }
 
-sub pack ($$$) {
+sub pack ($$) {
 	my $self = shift;
 	my $packer = shift;
-	my $is_response = shift;
 
-	if ($is_response) {
+	if ($self->is_response) {
 		$packer
 			->uint16(0)  # session flags
 			->uint16($packer->get_stored_diff('smb-header') + 4)

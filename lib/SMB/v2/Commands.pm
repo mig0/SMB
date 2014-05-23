@@ -152,7 +152,7 @@ sub pack ($$$%) {
 	my $header = $command->header;
 	my $status = $command->status;
 
-	my $is_response = $options{is_response} // $command->is_response;
+	my $is_response = $command->is_response;
 	my $struct_size = $options{struct_size} // $command_struct_sizes[$header->{code}][$is_response] // $header->{struct_size};
 	my $is_chained  = $options{is_chained};
 	my $is_first    = $options{is_first};
@@ -200,7 +200,7 @@ sub pack ($$$%) {
 
 	$packer->store('header-end');
 	$packer->uint16($struct_size);
-	$command->pack($packer, $is_response);
+	$command->pack($packer);
 
 	my $payload_allowed = $struct_size % 2;
 	my $size = $packer->get_stored_diff('header-end');

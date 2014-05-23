@@ -50,7 +50,7 @@ sub is_response ($) {
 sub prepare_response ($) {
 	my $self = shift;
 
-	$self->header->{flags} &= SMB::v2::Header::FLAGS_RESPONSE;
+	$self->header->{flags} |= SMB::v2::Header::FLAGS_RESPONSE;
 	$self->header->{credits} = 31 if $self->header->{credits} > 31;
 }
 
