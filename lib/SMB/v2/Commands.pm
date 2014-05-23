@@ -172,12 +172,12 @@ sub pack ($$$%) {
 
 	# skip NetBIOS header (length will be filled later)
 	if (!$is_chained || $is_first) {
-		$packer->store('netbios-header');
+		$packer->mark('netbios-header');
 		$packer->skip(4);
 	}
 
 	# pack SMB2 header
-	$packer->store('smb-header');
+	$packer->mark('smb-header');
 	$packer->bytes($header_stamp);  # SMB2 magic signature
 	$packer->uint16(64);            # header size
 	$packer->uint16($header->{credit_charge});
@@ -185,7 +185,7 @@ sub pack ($$$%) {
 	$packer->uint16($header->{code});
 	$packer->uint16($header->{credits} || 1);
 	$packer->uint32($flags);
-	$packer->store('next-command');
+	$packer->mark('next-command');
 	$packer->uint32(0);
 	$packer->uint64($header->{mid});
 	# aid or pid + tid
@@ -198,31 +198,31 @@ sub pack ($$$%) {
 	$packer->uint64($header->{uid});
 	$packer->bytes("\0" x 16);      # no message signing for now
 
-	$packer->store('header-end');
+	$packer->mark('header-end');
 	$packer->uint16($struct_size);
 	$command->pack($packer);
 
 	my $payload_allowed = $struct_size % 2;
-	my $size = $packer->get_stored_diff('header-end');
+	my $size = $packer->diff('header-end');
 	my $size0 = $struct_size & ~1;
 	die "SMB2 command $command->{name} pack produced size $size, expected $size0\n"
 		if $size > $size0 && !$payload_allowed;
 	$packer->zero($size0 - $size) if $size0 > $size;
 
-	$packer->store('end');
+	$packer->mark('end');
 	if ($is_chained && !$is_last) {
-		my $command_size = $packer->get_stored_diff('header');
+		my $command_size = $packer->diff('header');
 		my $command_size_padded = ($command_size + 7) & ~7;
 		$packer->zero($command_size_padded - $command_size);
-		$packer->store('end');
-		$packer->restore('next-command');
+		$packer->mark('end');
+		$packer->jump('next-command');
 		$packer->uint32($command_size_padded);
 	}
 	if (!$is_chained || $is_last) {
-		$packer->restore('netbios-header');
-		$packer->uint32_be(-$packer->get_stored_diff('end') - 4);
+		$packer->jump('netbios-header');
+		$packer->uint32_be(-$packer->diff('end') - 4);
 	}
-	$packer->restore('end');
+	$packer->jump('end');
 }
 
 1;

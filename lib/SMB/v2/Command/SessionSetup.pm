@@ -60,7 +60,7 @@ sub pack ($$) {
 	if ($self->is_response) {
 		$packer
 			->uint16(0)  # session flags
-			->uint16($packer->get_stored_diff('smb-header') + 4)
+			->uint16($packer->diff('smb-header') + 4)
 			->uint16(length($self->security_buffer))
 			->bytes ($self->security_buffer)
 		;
@@ -70,7 +70,7 @@ sub pack ($$) {
 			->uint8 ($self->security_mode)
 			->uint32($self->capabilities)
 			->uint32(0)  # channel
-			->uint16($packer->get_stored_diff('smb-header') + 12)
+			->uint16($packer->diff('smb-header') + 12)
 			->uint16(length $self->security_buffer)
 			->uint64($self->previous_session_id)
 			->bytes ($self->security_buffer)

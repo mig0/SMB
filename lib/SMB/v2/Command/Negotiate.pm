@@ -87,7 +87,7 @@ sub pack ($$) {
 			->uint32($self->max_write_size)
 			->uint64(0)  # current time
 			->uint64(0)  # boot time
-			->uint16($packer->get_stored_diff('smb-header') + 8)
+			->uint16($packer->diff('smb-header') + 8)
 			->uint16(length($security_buffer))
 			->uint32(0)  # reserved2
 			->bytes ($security_buffer)

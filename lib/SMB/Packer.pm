@@ -33,7 +33,7 @@ sub reset ($) {
 
 	$self->{data} = '';
 	$self->{offset} = 0;
-	$self->{stored} = {};
+	$self->{marks} = {};
 
 	return $self;
 }
@@ -64,29 +64,29 @@ sub skip ($$) {
 	return $self;
 }
 
-sub store ($$) {
+sub mark ($$) {
 	my $self = shift;
 	my $name = shift // '';
 
-	$self->{stored}{$name} = $self->{offset};
+	$self->{marks}{$name} = $self->{offset};
 
 	return $self;
 }
 
-sub restore ($$) {
+sub jump ($$) {
 	my $self = shift;
 	my $name = shift // '';
 
-	$self->{offset} = $self->{stored}{$name} || 0;
+	$self->{offset} = $self->{marks}{$name} || 0;
 
 	return $self;
 }
 
-sub get_stored_diff ($$) {
+sub diff ($$) {
 	my $self = shift;
 	my $name = shift // '';
 
-	return $self->{offset} - ($self->{stored}{$name} || 0);
+	return $self->{offset} - ($self->{marks}{$name} || 0);
 }
 
 my %UINT_MODS = (
