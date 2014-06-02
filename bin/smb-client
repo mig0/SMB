@@ -37,7 +37,7 @@ GetOptions(
 	'U|username'    => \$username,
 ) or show_usage(1);
 
-my $sharename = shift || '//localhost/users';
+my $shareuri = shift || '//localhost/users';
 
 my $password = $username =~ s/%(.*)$// && $1;
 unless ($password) {
@@ -47,7 +47,7 @@ unless ($password) {
 }
 
 my $client = SMB::Client->new(
-	$sharename,
+	$shareuri,
 	username => $username,
 	password => $password,
 	verbose  => $verbose,
