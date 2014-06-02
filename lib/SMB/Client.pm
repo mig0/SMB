@@ -48,8 +48,8 @@ sub init ($$%) {
 
 	$options{id} ? $self->{id} = $options{id} : $self->{id}++;
 
-	$shareuri =~ m!([/\\])\1([\w.]+)(?::\d+))\1?!)
-		or die "Invalid share uri ($shareuri), should be //server.name.or.ip[:port]/share\n"
+	$shareuri =~ m~([/\\])\1([\w.]+(?::\d+)?)\1([!/\\]+)\1?~
+		or die "Invalid share uri ($shareuri), should be //server.name.or.ip[:port]/share\n";
 	my $addr = $2;
 	my $sharename = $3;
 	$addr .= ':445' unless $addr =~ /:/;
