@@ -19,6 +19,7 @@ use strict;
 use warnings;
 
 use bytes;
+use Encode 'encode';
 
 sub new ($$) {
 	my $class = shift;
@@ -34,6 +35,7 @@ sub reset ($) {
 	$self->{data} = '';
 	$self->{offset} = 0;
 	$self->{marks} = {};
+	$self->{stubs} = {};
 
 	return $self;
 }
@@ -60,6 +62,38 @@ sub skip ($$) {
 	$self->zero($n_bytes - $n_avail) if $n_avail < $n_bytes;
 
 	$self->{offset} += $n_avail;
+
+	return $self;
+}
+
+sub stub ($$$) {
+	my $self = shift;
+	my $name = shift // '';
+	my $type = shift // '';
+
+	die "type must be either bytes with size or uint{8,16,32,64}"
+		unless $type =~ /^uint(8|16|32|64)$/ || $type =~ /^\d+$/;
+	$self->{stubs}{$name} = [ $self->{offset}, $type ];
+
+	$type =~ /^\d+$/
+		? $self->bytes("\0" x $type)
+		: $self->$type(0);
+
+	return $self;
+}
+
+sub fill ($$) {
+	my $self = shift;
+	my $name = shift // '';
+	my $data = shift // die;
+
+	my $curr_offset = $self->{offset};
+	my ($offset, $type) = @{$self->{stubs}{$name}};
+	$self->{offset} = $offset;
+	$type =~ /^\d+$/
+		? $self->bytes($data)
+		: $self->$type($data);
+	$self->{offset} = $curr_offset;
 
 	return $self;
 }
@@ -107,6 +141,14 @@ sub uint ($$$$) {
 	return $self->bytes(pack($UINT_MODS{$be_factor * $n_bytes}, $i));
 }
 
+sub str ($$;$) {
+	my $self = shift;
+	my $str = shift;
+	my $enc = shift || 'UTF-16LE';
+
+	return $self->bytes(encode($enc, $str));
+}
+
 sub bytes ($$) {
 	my $self = shift;
 	my $data = shift;
@@ -125,5 +167,7 @@ sub uint32    { uint($_[0], 4, 0, $_[1]); }
 sub uint16_be { uint($_[0], 2, 1, $_[1]); }
 sub uint32_be { uint($_[0], 4, 1, $_[1]); }
 sub uint64    { uint32($_[0], $_[1] & 0xffffffff); uint32($_[0], $_[1] >> 32); }
+sub utf16     { str($_[0], $_[1]); }
+sub utf16_be  { str($_[0], $_[1], 'UTF-16BE'); }
 
 1;
