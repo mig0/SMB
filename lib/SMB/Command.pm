@@ -27,12 +27,12 @@ sub new ($$$$%) {
 	my $header = shift || die "No header parameter in $class constructor\n";
 	my %options = @_;
 
-	my $self = bless {
+	my $self = $class->SUPER::new(
 		%options,
 		smb  => $smb,
 		name => $name,
 		header => $header,
-	}, $class;
+	);
 
 	$self->init;
 
@@ -50,6 +50,7 @@ sub is_smb1 ($) { $_[0]->smb <= 1 }
 sub is_smb2 ($) { $_[0]->smb >= 2 }
 
 sub status ($) { $_[0]->header->{status} }
+sub set_status ($$) { $_[0]->header->{status} = $_[1]; }
 
 # stub methods to be overloaded
 
