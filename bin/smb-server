@@ -10,7 +10,8 @@ use integer;
 
 use Getopt::Long qw(:config no_ignore_case bundling);
 
-use lib 'lib', '../lib';
+use FindBin;
+use lib "$FindBin::Bin/../lib";
 use SMB::Server;
 
 my $port = 445;

@@ -9,6 +9,8 @@ use sigtrap qw(die untrapped normal-signals  stack-trace any error-signals);
 use Getopt::Long qw(:config no_ignore_case bundling);
 use POSIX qw(strftime);
 
+use FindBin;
+use lib "$FindBin::Bin/../lib";
 use SMB::Client;
 
 my $verbose = 0;
@@ -37,7 +39,7 @@ GetOptions(
 	'U|username'    => \$username,
 ) or show_usage(1);
 
-my $shareuri = shift || '//localhost/users';
+my $share_uri = shift || '//localhost/users';
 
 my $password = $username =~ s/%(.*)$// && $1;
 unless ($password) {
@@ -47,7 +49,7 @@ unless ($password) {
 }
 
 my $client = SMB::Client->new(
-	$shareuri,
+	$share_uri,
 	username => $username,
 	password => $password,
 	verbose  => $verbose,

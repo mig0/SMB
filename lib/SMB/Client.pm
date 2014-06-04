@@ -27,7 +27,7 @@ use IO::Socket;
 
 sub new ($$%) {
 	my $class = shift;
-	my $shareuri = shift;
+	my $share_uri = shift;
 	my %options = @_;
 
 	my $self = $class->SUPER::new(
@@ -36,35 +36,32 @@ sub new ($$%) {
 		verbose => delete $options{verbose} || 0,
 	);
 
-	bless $self, $class;
-
-	return $self->init($shareuri, %options);
+	return $self->init($share_uri, %options);
 }
 
 sub init ($$%) {
 	my $self = shift;
-	my $shareuri = shift;
+	my $share_uri = shift;
 	my %options = @_;
 
 	$options{id} ? $self->{id} = $options{id} : $self->{id}++;
 
-	$shareuri =~ m~([/\\])\1([\w.]+(?::\d+)?)\1([!/\\]+)\1?~
-		or die "Invalid share uri ($shareuri), should be //server.name.or.ip[:port]/share\n";
-	my $addr = $2;
-	my $sharename = $3;
+	my ($addr, $share) = $self->parse_share_uri($share_uri);
+	die "Please specify share uri //server.name.or.ip[:port]/share\n"
+		unless $addr && $share;
 	$addr .= ':445' unless $addr =~ /:/;
 
 	my $socket = IO::Socket::INET->new(PeerAddr => $addr, Proto => 'tcp')
 		or	die "Can't open $addr: $!\n";
 
-	$self->{socket}    = $socket;
-	$self->{tree}      = undef;
-	$self->{addr}      = $addr;
-	$self->{sharename} = $sharename;
-	$self->{username}  = $options{username};
-	$self->{password}  = $options{password};
+	$self->{socket}   = $socket;
+	$self->{tree}     = undef;
+	$self->{addr}     = $addr;
+	$self->{share}    = $share;
+	$self->{username} = $options{username};
+	$self->{password} = $options{password};
 
-	$self->msg("SMB client #$self->{id} created for server $addr share $sharename");
+	$self->msg("SMB client #$self->{id} created for server $addr share $share");
 
 	return $self;
 }
