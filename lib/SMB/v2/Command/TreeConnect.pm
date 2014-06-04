@@ -41,17 +41,22 @@ sub set_uri ($$) {
 sub get_uri ($) {
 	my $self = shift;
 
-	my $uri = $self->{uri}
-		or die "No share uri set for TreeConnect";
-	$uri =~ m~([/\\])\1([\w.]+(?::\d+)?)\1([!/\\]+)\1?~
-		or die "Invalid share uri ($uri) for TreeConnect";
+	die "Tree connect $self misses share uri\n"
+		unless $self->parse_share_uri($self->{uri});
 
-	return $uri;
+	return $self->{uri};
 }
 
 sub parse ($$) {
 	my $self = shift;
 	my $parser = shift;
+
+	$parser->uint16;
+	$parser->uint16;
+	my $len = $parser->uint16;
+	my $uri = $parser->utf16($len);
+
+	$self->set_uri($uri);
 
 	return $self;
 }

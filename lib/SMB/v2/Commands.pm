@@ -200,7 +200,8 @@ sub pack ($$$%) {
 
 	$packer->mark('header-end');
 	$packer->uint16($struct_size);
-	$command->pack($packer);
+
+	$command->pack($packer) if $command->status == 0 || $command->is('SessionSetup');
 
 	my $payload_allowed = $struct_size % 2;
 	my $size = $packer->diff('header-end');

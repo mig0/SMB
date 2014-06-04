@@ -22,12 +22,16 @@ use parent 'SMB';
 
 use IO::Socket;
 use IO::Select;
+use File::Basename qw(basename);
 use SMB::Connection;
+use SMB::Tree;
 use SMB::v2::Command::Negotiate;
 
 sub new ($%) {
 	my $class = shift;
 	my %options = @_;
+
+	my $share_roots = delete $options{share_roots};
 
 	my $port = delete $options{port};
 	my $fifo_filename = delete $options{fifo_filename};
@@ -52,6 +56,22 @@ sub new ($%) {
 
 	bless $self, $class;
 
+	if (!$share_roots && $FindBin::Bin) {
+		my $shares_dir = "$FindBin::Bin/../shares";
+		$share_roots = { map { basename($_) => $_ } grep { -d $_ && -x _ && -r _ } glob("$shares_dir/*") }
+			if -d $shares_dir;
+	}
+	unless ($share_roots) {
+		$self->err("No share_roots specified and no shares/ autodetected");
+		$share_roots = {};
+	} elsif (ref($share_roots) ne 'HASH') {
+		$self->err("Invalid share_roots ($share_roots) specified");
+		$share_roots = {};
+	} elsif (!%$share_roots) {
+		$self->err("No shares to manage, specify non-empty share_roots hash");
+	}
+	$self->{share_roots} = $share_roots;
+
 	$self->msg("SMB server started, listening on $listen_label");
 
 	return $self;
@@ -69,10 +89,22 @@ sub on_command ($$$) {
 	}
 
 	if ($command->is_smb2) {
+		my $error = 0;
 		if ($command->is('SessionSetup')) {
 			$command->header->{uid} = $connection->id;
 		}
+		elsif ($command->is('TreeConnect')) {
+			my ($addr, $share) = $self->parse_share_uri($command->get_uri);
+			my $tree_root = $self->share_roots->{$share};
+			if ($tree_root || $share eq 'IPC$') {
+				my $tid = $command->header->{tid} = @{$connection->{trees} ||= []} + 1;
+				push @{$connection->{trees}}, SMB::Tree->new($share, $tid, root => $tree_root);
+			} else {
+				$error = 0xc00000cc;  # STATUS_BAD_NETWORK_NAME
+			}
+		}
 		$command->prepare_response;
+		$command->set_status($error) if $error;
 		$connection->send_command($command);
 		return;
 	}
