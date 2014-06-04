@@ -20,6 +20,7 @@ use warnings;
 
 use bytes;
 use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
+use Encode 'decode';
 
 sub new ($$) {
 	my $class = shift;
@@ -50,19 +51,6 @@ sub set ($$) {
 sub data { $_[0]->{data} }
 sub size { $_[0]->{size} }
 
-sub _read_string ($$) {
-	my $self = shift;
-	my $n_bytes = shift;
-
-	my $n_avail = $self->{offset} + $n_bytes > $self->{size}
-		? $self->{size} - $self->{offset} : $n_bytes;
-
-	my $str = $self->{offset} > $self->{size} ? '' : substr($self->{data}, $self->{offset}, $n_avail);
-	$self->{offset} += $n_bytes;
-
-	return $str;
-}
-
 my %UINT_MODS = (
 	+1 => 'C',
 	+2 => 'v',
@@ -77,14 +65,26 @@ sub uint ($$;$) {
 	my $n_bytes = shift;
 	my $be_factor = shift() ? -1 : 1;
 
-	return unpack($UINT_MODS{$be_factor * $n_bytes}, $self->_read_string($n_bytes));
+	return unpack($UINT_MODS{$be_factor * $n_bytes}, $self->bytes($n_bytes));
+}
+
+sub str ($$;$) {
+	my $self = shift;
+	my $n_bytes = shift;
+	my $enc = shift || 'UTF-16LE';
+
+	return decode($enc, $self->bytes($n_bytes));
 }
 
 sub bytes ($$) {
 	my $self = shift;
 	my $n_bytes = shift;
 
-	my $bytes = $self->_read_string($n_bytes);
+	my $n_avail = $self->{offset} + $n_bytes > $self->{size}
+		? $self->{size} - $self->{offset} : $n_bytes;
+
+	my $bytes = $self->{offset} > $self->{size} ? '' : substr($self->{data}, $self->{offset}, $n_avail);
+	$self->{offset} += $n_bytes;
 
 	return wantarray ? split('', $bytes) : $bytes;
 }
@@ -95,5 +95,7 @@ sub uint32    { uint($_[0], 4   ); }
 sub uint16_be { uint($_[0], 2, 1); }
 sub uint32_be { uint($_[0], 4, 1); }
 sub uint64    { uint32($_[0]) + (uint32($_[0]) << 32); }
+sub utf16     { str($_[0], $_[1]); }
+sub utf16_be  { str($_[0], $_[1], 'UTF-16BE'); }
 
 1;
