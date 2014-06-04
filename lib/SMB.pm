@@ -98,6 +98,22 @@ sub pack_bytes  { $_[0]->packer->bytes($_[1]); }
 sub pack_smb1   { SMB::v1::Commands->pack(shift()->packer, shift, @_) }
 sub pack_smb2   { SMB::v2::Commands->pack(shift()->packer, shift, @_) }
 
+sub parse_share_uri ($$) {
+	my $self = shift;
+	my $share_uri = shift;
+
+	unless ($share_uri) {
+		$self->err("No share uri supplied");
+		return;
+	}
+	unless ($share_uri =~ m~^([/\\])\1([\w.]+(?::\d+)?)\1([^/\\]+)(?:$|\1)~) {
+		$self->err("Invalid share uri ($share_uri)");
+		return;
+	}
+
+	return wantarray ? ($2, $3) : $share_uri;
+}
+
 our $AUTOLOAD;
 
 sub AUTOLOAD ($;@) {
