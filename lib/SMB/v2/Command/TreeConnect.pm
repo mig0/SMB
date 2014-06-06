@@ -51,20 +51,21 @@ sub parse ($$) {
 	my $self = shift;
 	my $parser = shift;
 
-	$parser->uint16;
-	$parser->uint16;
-	my $len = $parser->uint16;
-	my $uri = $parser->utf16($len);
-
-	$self->set_uri($uri);
+	if ($self->is_response) {
+		$self->{share_type} = $parser->uint8;
+		$parser->uint8;  # reserved
+		$self->{share_flags} = $parser->uint32;
+		$self->{capabilities} = $parser->uint32;
+		$self->{access_mask} = $parser->uint32;
+	} else {
+		$parser->uint16;  # reserved
+		$parser->uint16;
+		my $len = $parser->uint16;
+		my $uri = $parser->utf16($len);
+		$self->set_uri($uri);
+	}
 
 	return $self;
-}
-
-sub prepare_response ($) {
-	my $self = shift;
-
-	$self->SUPER::prepare_response;
 }
 
 sub pack ($$) {
