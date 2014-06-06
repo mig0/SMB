@@ -97,5 +97,7 @@ sub uint32_be { uint($_[0], 4, 1); }
 sub uint64    { uint32($_[0]) + (uint32($_[0]) << 32); }
 sub utf16     { str($_[0], $_[1]); }
 sub utf16_be  { str($_[0], $_[1], 'UTF-16BE'); }
+sub fid1      { uint16($_[0]); }
+sub fid2      { [ uint64($_[0]), uint64($_[0]) ]; }
 
 1;
