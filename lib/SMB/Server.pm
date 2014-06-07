@@ -100,7 +100,7 @@ sub on_command ($$$) {
 				my $tid = $command->header->{tid} = @{$connection->{trees} ||= []} + 1;
 				push @{$connection->{trees}}, SMB::Tree->new($share, $tid, root => $tree_root);
 			} else {
-				$error = 0xc00000cc;  # STATUS_BAD_NETWORK_NAME
+				$error = SMB::STATUS_BAD_NETWORK_NAME;
 			}
 		}
 		$command->prepare_response;
