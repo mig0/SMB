@@ -30,8 +30,11 @@ sub new ($$;$%) {
 
 	my $self = $class->SUPER::new(
 		%options,
-		socket => $socket,
-		id => $id,
+		socket     => $socket,
+		id         => $id,
+		trees      => [],
+		last_fid   => 0,
+		open_files => {},
 	);
 
 	bless $self, $class;

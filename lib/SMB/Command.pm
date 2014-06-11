@@ -51,6 +51,8 @@ sub is_smb2 ($) { $_[0]->smb >= 2 }
 
 sub status ($) { $_[0]->header->{status} }
 sub set_status ($$) { $_[0]->header->{status} = $_[1]; }
+sub is_success ($) { $_[0]->status == 0 }
+sub is_error   ($) { $_[0]->status != 0 }
 
 # stub methods to be overloaded
 

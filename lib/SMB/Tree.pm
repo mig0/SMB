@@ -20,6 +20,8 @@ use warnings;
 
 use parent 'SMB';
 
+use SMB::File;
+
 sub new ($$$%) {
 	my $class = shift;
 	my $share = shift || die "No share in constructor";
