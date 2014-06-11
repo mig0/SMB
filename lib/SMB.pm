@@ -158,14 +158,17 @@ sub AUTOLOAD ($;@) {
 		unless ref($self);
 
 	if (exists $self->{$method}) {
-		warn "Redundant params (@params) on implicit access of field '$method' in $self\n"
-			if @params;
 		# define this accessor method explicitely if not yet
 		no strict 'refs';
 		*{$AUTOLOAD} = sub {
-			shift()->{$method}
+			my $self = shift;
+			warn "Skipping extraneous params (@_) on access of field '$method' in $self\n"
+				if @_ > 1;
+			$self->{$method} = shift if @_;
+			return $self->{$method};
 		} unless $self->can($AUTOLOAD);
-		return $self->{$method};
+
+		return *{$AUTOLOAD}->($self, @params);
 	}
 
 	die "Unknown method or field '$method' in $self\n";
