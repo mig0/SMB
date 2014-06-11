@@ -41,12 +41,45 @@ GetOptions(
 
 my $share_uri = shift || '//localhost/users';
 
-my $password = $username =~ s/%(.*)$// && $1;
-unless ($password) {
-	print STDERR "Enter password for user '$username': ";
-	chomp($password = <>);
-	print STDERR "\n";
+use Term::ReadLine;
+my $term = Term::ReadLine->new('smb-client');
+$term->MinLine(undef);  # no autohistory
+my $OUT = $term->OUT || \*STDOUT;
+my $history_filename = '.smb-client-history';
+eval { $term->ReadHistory($history_filename) };
+END { eval { $term->WriteHistory($history_filename) }; }
+$Term::ReadLine::Gnu::Attribs{term_set} = [ "\033[1;36m", "\033[m", "\033[1;31m", "\033[m" ]
+	if %Term::ReadLine::Gnu::Attribs;
+@Term::ReadLine::TermCap::rl_term_set = ("\033[1;36m", "\033[m", "\033[1;31m", "\033[m")
+	if @Term::ReadLine::TermCap::rl_term_set;
+
+my @args;
+sub prompt ($;$$) {
+	my $message = shift;
+	my $n_args = shift || 0;
+	my $is_secret = shift;
+
+	return shift @args if $n_args == -1 && @args;
+
+	my $answer = $term->readline("$message ", '');
+	print $OUT "\n";
+	return unless defined $answer;
+	$answer =~ s/^\s+|\s+$//g;
+	$answer =~ s/\s+/ /g;
+	$term->addhistory($answer) if $answer ne '' && !$is_secret;
+
+	my @words = split(' ', $answer);
+	if (@words > 1) {
+		$answer = shift @words;
+		push @args, shift @words while @words && $n_args--;
+		warn "Extraneous words in input (@words) skipped\n" if @words;
+	}
+
+	return $answer;
 }
+
+my $password = $username =~ s/%(.*)$// ? $1 : undef;
+$password //= prompt("Enter password for user '$username'", 0, 1);
 
 my $client = SMB::Client->new(
 	$share_uri,
@@ -55,9 +88,52 @@ my $client = SMB::Client->new(
 	verbose  => $verbose,
 );
 
-my $tree = $client->connect;
-my $files = $tree->find("*");
+my $tree = $client->connect
+	or die "Failed to connect to $share_uri, aborting\n";
 
-for my $file (@$files) {
+my %operations = (
+	cd => sub {
+		$tree->chdir(prompt("Directory to change to"));
+	},
+	del => sub {
+		$tree->remove(prompt("File to remove"));
+	},
+	dir => sub {
+		$tree->find(@args ? shift @args : '*');
+	},
+	help => sub {
+		my $help = qq{
+			Operations available:
+
+			cd DIR        change working directory
+			del FILE      remove file
+			dir [MASK]    list all or matching files
+			rename F1 F2  rename file
+		};
+		$help =~ s/^\n//; $help =~ s/^\t{2}\t?//mg;
+		print $help;
+	},
+);
+
+my %aliases = (
+	chdir => 'cd',
+	rm => 'del',
+	find => 'dir',
+);
+
+print "Connected to $share_uri. Files:\n";
+for my $file (@{$tree->find("*")}) {
 	printf "%-40s %s\n", $file->name, $file->mtime_string;
 }
+
+while (1) {
+	my $op = prompt("smb> ", 2);
+	$op = $aliases{$op} if $aliases{$op};
+	my $func = $operations{$op};
+	if ($func) {
+		$func->();
+	} else {
+		print "Invalid operation, try 'help'\n";
+	}
+}
+

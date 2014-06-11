@@ -34,6 +34,7 @@ sub new ($$%) {
 		id      => 0,
 		quiet   => delete $options{quiet} || 0,
 		verbose => delete $options{verbose} || 0,
+		cwd     => '',
 	);
 
 	return $self->init($share_uri, %options);
@@ -73,6 +74,27 @@ sub connect ($%) {
 	my $username = $self->{username} || $options{username} || die "No username to connect\n";
 	my $password = $self->{password} || $options{password} || die "No password to connect\n";
 
+	return;
+}
+
+sub normalize_path ($$) {
+	my $self = shift;
+	my $path = shift // '';
+
+	$path = "$self->{cwd}/$path" if $path =~ m!^[^/]!;
+
+	# TODO: strip "subdir/.." parts
+	$path =~ s!/+$!/!g;
+	$path =~ s!/$!!;
+
+	return $path;
+}
+
+sub chdir ($$) {
+	my $self = shift;
+	my $dir = shift // '';
+
+	$self->{cwd} = $self->normalize_path($dir);
 }
 
 1;
