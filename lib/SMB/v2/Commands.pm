@@ -134,7 +134,10 @@ sub parse ($$) {
 			}
 		}
 
-		$command = $command_class->new($header)->parse($parser)
+		$command = $command_class->new($header);
+		return $command unless $command->is_success || $command->is('SessionSetup');
+
+		$command = $command->parse($parser)
 			or warn sprintf "Failed to parse SMB2 command 0x%x ($command_name)\n", $code;
 	} else {
 		warn sprintf "Got unexisting SMB2 command 0x%x\n", $code;
@@ -201,7 +204,7 @@ sub pack ($$$%) {
 	$packer->mark('header-end');
 	$packer->uint16($struct_size);
 
-	$command->pack($packer) if $command->status == 0 || $command->is('SessionSetup');
+	$command->pack($packer) if $command->is_success || $command->is('SessionSetup');
 
 	my $payload_allowed = $struct_size % 2;
 	my $size = $packer->diff('header-end');
