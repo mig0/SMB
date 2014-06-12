@@ -95,8 +95,7 @@ sub new ($%) {
 	my $filename = undef;
 	if ($root) {
 		die "No share_root directory ($root)" unless -d $root;
-		my $path = $name =~ m![^/]+/(.*)! ? $1 : '';
-		$filename = $path eq '' ? "$root/$path" : $root;
+		$filename = "$root/$name";
 	}
 	my @stat = $filename && -e $filename ? stat($filename) : ();
 
