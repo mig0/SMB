@@ -184,6 +184,7 @@ sub pack ($$$%) {
 	$packer->bytes($header_stamp);  # SMB2 magic signature
 	$packer->uint16(64);            # header size
 	$packer->uint16($header->{credit_charge});
+	$packer->mark('status');
 	$packer->uint32($is_response ? $status : 0);
 	$packer->uint16($header->{code});
 	$packer->uint16($header->{credits} || 1);
@@ -203,6 +204,7 @@ sub pack ($$$%) {
 
 	$packer->mark('header-end');
 	$packer->uint16($struct_size);
+	$packer->mark('command-start');
 
 	$command->pack($packer) if $command->is_success || $command->is('SessionSetup');
 

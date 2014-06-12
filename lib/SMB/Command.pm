@@ -82,6 +82,17 @@ sub set ($%) {
 	$self->{$_} = $values{$_} for keys %values;
 }
 
+sub abort_pack ($$) {
+	my $self = shift;
+	my $packer = shift;
+	my $status = shift;
+
+	$self->set_status($status);
+	$packer->jump('status')->uint32($status)->jump('command-start');
+
+	return $self;
+}
+
 sub dump ($) {
 	my $self = shift;
 
