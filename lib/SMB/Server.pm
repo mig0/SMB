@@ -26,6 +26,7 @@ use File::Basename qw(basename);
 use SMB::Connection;
 use SMB::Tree;
 use SMB::v2::Command::Negotiate;
+use SMB::v2::Command::Create;
 
 sub new ($%) {
 	my $class = shift;
@@ -82,6 +83,10 @@ sub on_command ($$$) {
 	my $connection = shift;
 	my $command = shift;
 
+	my $tid = $command->header->{tid};
+	my $tree = $tid ? (grep { $_->id == $tid } @{$connection->{trees}})[0] : undef;
+	$command->{tree} = $tree if $tree;
+
 	if ($command->is_smb1) {
 		if ($command->is('Negotiate') && $command->supports_protocol(2)) {
 			$command = SMB::v2::Command::Negotiate->new_from_v1($command);
@@ -90,7 +95,21 @@ sub on_command ($$$) {
 
 	if ($command->is_smb2) {
 		my $error = 0;
-		if ($command->is('SessionSetup')) {
+		my $fid = $command->{fid};
+
+		if (($tid || exists $command->{fid}) && !$tree) {
+			$error = SMB::STATUS_SMB_BAD_TID;
+		}
+		elsif ($fid) {
+			my $file = $connection->{open_files}{@$fid}
+				or $error = SMB::STATUS_FILE_CLOSED;
+			$command->file($file);
+		}
+
+		if ($error) {
+			# skip command processing
+		}
+		elsif ($command->is('SessionSetup')) {
 			$command->header->{uid} = $connection->id;
 		}
 		elsif ($command->is('TreeConnect')) {
@@ -102,6 +121,27 @@ sub on_command ($$$) {
 			} else {
 				$error = SMB::STATUS_BAD_NETWORK_NAME;
 			}
+		}
+		elsif ($command->is('Create')) {
+			my $file = SMB::File->new(name => $command->file_name, share_root => $tree->root);
+			if ($file->exists) {
+				if ($command->requested_directory && !$file->is_directory) {
+					$error = SMB::STATUS_NOT_A_DIRECTORY;
+				} elsif ($command->requested_non_directory && $file->is_directory) {
+					$error = SMB::STATUS_FILE_IS_A_DIRECTORY;
+				} else {
+					my $fid = [ ++$connection->{last_fid}, 0 ];
+					$connection->{open_files}{@$fid} = $file;
+					$command->fid($fid);
+					$command->file($file);
+					$command->create_action(SMB::v2::Command::Create::ACTION_OPENED);
+				}
+			} else {
+				$error = SMB::STATUS_NO_SUCH_FILE;
+			}
+		}
+		elsif ($command->is('Close')) {
+			delete $connection->{open_files}{@$fid};
 		}
 		$command->prepare_response;
 		$command->set_status($error) if $error;
