@@ -94,10 +94,10 @@ sub on_command ($$$) {
 			$command->header->{uid} = $connection->id;
 		}
 		elsif ($command->is('TreeConnect')) {
-			my ($addr, $share) = $self->parse_share_uri($command->get_uri);
+			my ($addr, $share) = $self->parse_share_uri($command->verify_uri);
 			my $tree_root = $self->share_roots->{$share};
 			if ($tree_root || $share eq 'IPC$') {
-				my $tid = $command->header->{tid} = @{$connection->{trees} ||= []} + 1;
+				my $tid = $command->header->{tid} = @{$connection->{trees}} + 1;
 				push @{$connection->{trees}}, SMB::Tree->new($share, $tid, root => $tree_root);
 			} else {
 				$error = SMB::STATUS_BAD_NETWORK_NAME;

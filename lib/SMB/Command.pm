@@ -65,19 +65,21 @@ sub parse ($$%) {
 
 sub pack ($$%) {
 	my $self = shift;
-	my $parser = shift;
+	my $packer = shift;
 
 	return $self;
 }
+
+sub init ($) {
+}
+
+# end of stub methods
 
 sub set ($%) {
 	my $self = shift;
 	my %values = @_;
 
 	$self->{$_} = $values{$_} for keys %values;
-}
-
-sub init ($) {
 }
 
 sub dump ($) {
@@ -89,7 +91,7 @@ sub dump ($) {
 		$self->header->{mid},
 		$self->header->{uid},
 		$self->header->{tid},
-		$self->status ? " status=" . $self->status : '',
+		$self->status ? sprintf " status=%x", $self->status : '',
 }
 
 1;

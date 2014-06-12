@@ -26,25 +26,17 @@ sub init ($) {
 		share_flags  => 0x800,
 		capabilities => 0,
 		access_mask  => 0x1f01ff,
+		uri          => undef,
 	)
 }
 
-sub set_uri ($$) {
-	my $self = shift;
-	my $uri = shift;
-
-	$self->{uri} = $uri;
-
-	return $self;
-}
-
-sub get_uri ($) {
+sub verify_uri ($) {
 	my $self = shift;
 
 	die "Tree connect $self misses share uri\n"
-		unless $self->parse_share_uri($self->{uri});
+		unless $self->parse_share_uri($self->uri);
 
-	return $self->{uri};
+	return $self->uri;
 }
 
 sub parse ($$) {
@@ -52,17 +44,16 @@ sub parse ($$) {
 	my $parser = shift;
 
 	if ($self->is_response) {
-		$self->{share_type} = $parser->uint8;
+		$self->share_type($parser->uint8);
 		$parser->uint8;  # reserved
-		$self->{share_flags} = $parser->uint32;
-		$self->{capabilities} = $parser->uint32;
-		$self->{access_mask} = $parser->uint32;
+		$self->share_flags($parser->uint32);
+		$self->capabilities($parser->uint32);
+		$self->access_mask($parser->uint32);
 	} else {
 		$parser->uint16;  # reserved
 		$parser->uint16;
-		my $len = $parser->uint16;
-		my $uri = $parser->utf16($len);
-		$self->set_uri($uri);
+		my $uri_len = $parser->uint16;
+		$self->uri($parser->utf16($uri_len));
 	}
 
 	return $self;
@@ -86,7 +77,7 @@ sub pack ($$) {
 			->uint16($packer->diff('smb-header') + 4)
 			->stub('uri-len', 'uint16')
 			->mark('uri')
-			->utf16($self->get_uri)
+			->utf16($self->verify_uri)
 			->fill('uri-len', $packer->diff('uri'))
 		;
 	}
