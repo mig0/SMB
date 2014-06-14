@@ -26,9 +26,9 @@ use constant {
 
 sub init ($) {
 	$_[0]->set(
-		flags => 0,
-		file  => undef,
-		fid   => 0,
+		flags    => 0,
+		fid      => 0,
+		openfile => undef,
 	)
 }
 
@@ -37,11 +37,13 @@ sub parse ($$) {
 	my $parser = shift;
 
 	if ($self->is_response) {
+		my $openfile = $self->openfile;
+		my $file = $openfile && $openfile->file;
+
 		$self->flags($parser->uint16);
 		$parser->uint32;  # reserved
 		my @values = ((map { $parser->uint64 } 1 .. 6), $parser->uint32);
-		my $file = $self->file || die "No file set";
-		$file->update(@values);
+		$file->update(@values) if $file;
 	} else {
 		$self->flags($parser->uint16);
 		$parser->uint32;  # reserved
@@ -55,9 +57,13 @@ sub pack ($$) {
 	my $self = shift;
 	my $packer = shift;
 
-	my $file = $self->file || die "No file set";
-
 	if ($self->is_response) {
+		my $openfile = $self->openfile;
+		my $file = $openfile && $openfile->file;
+
+		return $self->abort_pack($packer, SMB::STATUS_FILE_CLOSED)
+			unless $file && $file->exists;
+
 		my $skip_attr = !($self->flags & FLAGS_POSTQUERY_ATTRIB);
 
 		$packer
@@ -75,7 +81,7 @@ sub pack ($$) {
 		$packer
 			->uint16($self->flags)
 			->uint32(0)  # reserved
-			->fid2($self->fid)
+			->fid2($self->fid || die "No fid set")
 		;
 	}
 }

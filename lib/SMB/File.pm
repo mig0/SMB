@@ -21,7 +21,7 @@ package SMB::File;
 use parent 'SMB';
 
 use Time::HiRes qw(stat);
-use Fcntl ':mode';
+use Fcntl qw(:mode O_CREAT O_EXCL O_TRUNC);
 use POSIX qw(strftime);
 use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
 
@@ -43,7 +43,22 @@ use constant {
 	ATTR_OFFLINE             => 0x00001000,
 	ATTR_NOT_CONTENT_INDEXED => 0x00002000,
 	ATTR_ENCRYPTED           => 0x00004000,
+
+	DISPOSITION_SUPERSEDE    => 0,  # exists ? supersede : create
+	DISPOSITION_OPEN         => 1,  # exists ? open      : fail
+	DISPOSITION_CREATE       => 2,  # exists ? fail      : create
+	DISPOSITION_OPEN_IF      => 3,  # exists ? open      : create
+	DISPOSITION_OVERWRITE    => 4,  # exists ? overwrite : fail
+	DISPOSITION_OVERWRITE_IF => 5,  # exists ? overwrite : create
+
+	ACTION_NONE        => -1,
+	ACTION_SUPERSEDED  => 0,  # existing file was deleted and new file was created in its place
+	ACTION_OPENED      => 1,  # existing file was opened
+	ACTION_CREATED     => 2,  # new file was created
+	ACTION_OVERWRITTEN => 3,  # new file was overwritten
 };
+
+use SMB::OpenFile;
 
 my $nttime_factor = 10_000_000;
 my $nttime_offset = 11_644_473_600;
@@ -95,6 +110,7 @@ sub new ($%) {
 	my $filename = undef;
 	if ($root) {
 		die "No share_root directory ($root)" unless -d $root;
+		1 while $root =~ s=(^|/)(?!\.\./)[^/]+/\.\.=$1=;
 		$filename = "$root/$name";
 	}
 	my @stat = $filename && -e $filename ? stat($filename) : ();
@@ -110,6 +126,7 @@ sub new ($%) {
 		end_of_file      => @stat ? $stat[ 7]             : 0,
 		attributes       => @stat ? to_ntattr($stat[ 2])  : 0,
 		exists           => @stat ? 1 : 0,
+		opens            => 0,
 		%options,
 	);
 
@@ -151,5 +168,114 @@ sub ctime_string { to_string($_[0]->ctime, $_[1]) }
 sub atime_string { to_string($_[0]->atime, $_[1]) }
 sub wtime_string { to_string($_[0]->wtime, $_[1]) }
 sub mtime_string { to_string($_[0]->mtime, $_[1]) }
+
+sub add_openfile ($$$) {
+	my $self = shift;
+	my $action = shift;
+	my $handle = shift;
+
+	my $openfile = SMB::OpenFile->new($self, $action, $handle);
+
+	$self->{opens}++;
+	$self->exists(1);
+
+	return $openfile;
+}
+
+sub delete_openfile ($$) {
+	my $self = shift;
+	my $openfile = shift;
+
+	close($openfile->handle);
+
+	--$self->{opens};
+}
+
+sub _fail_exists ($$) {
+	my $self = shift;
+	my $exists = shift;
+
+	$self->exists($exists || 0);
+
+	return undef;
+}
+
+sub supersede ($) {
+	my $self = shift;
+
+	return $self->create unless -e $self->filename;
+
+	my $filename = $self->filename;
+	my $tmp_filename = sprintf "%s.%06d", $self->filename, rand(1000000);
+
+	rename($filename, $tmp_filename)
+		or return $self->_fail_exists(1);
+	my $openfile = $self->create;
+	unless ($openfile) {
+		rename($tmp_filename, $filename)
+			or warn "Can't rename tmp file ($tmp_filename) to orig file ($filename)\n";
+		return $self->_fail_exists(0);
+	}
+	unlink($tmp_filename)
+		or warn "Can't remove tmp file ($tmp_filename)\n";
+
+	$openfile->action(ACTION_SUPERSEDED);
+
+	return $openfile;
+}
+
+sub open ($) {
+	my $self = shift;
+
+	sysopen(my $fh, $self->filename, from_ntattr($self->attributes))
+		or return $self->_fail_exists(0);
+
+	$self->add_openfile($fh, ACTION_OPENED);
+}
+
+sub create ($) {
+	my $self = shift;
+
+	sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | O_CREAT | O_EXCL)
+		or return $self->_fail_exists(1);
+
+	$self->add_openfile($fh, ACTION_CREATED);
+}
+
+sub overwrite ($) {
+	my $self = shift;
+
+	sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | O_TRUNC)
+		or return $self->_fail_exists(0);
+
+	$self->add_openfile($fh, ACTION_OVERWRITTEN);
+}
+
+sub open_if ($) {
+	my $self = shift;
+
+	return -e $self->filename ? $self->open : $self->create;
+}
+
+sub overwrite_if ($) {
+	my $self = shift;
+
+	return -e $self->filename ? $self->overwrite : $self->create;
+}
+
+sub open_by_disposition ($$) {
+	my $self = shift;
+	my $disposition = shift;
+
+	return $self->supersede    if $disposition == DISPOSITION_SUPERSEDE;
+	return $self->open         if $disposition == DISPOSITION_OPEN;
+	return $self->create       if $disposition == DISPOSITION_CREATE;
+	return $self->open_if      if $disposition == DISPOSITION_OPEN_IF;
+	return $self->overwrite    if $disposition == DISPOSITION_OVERWRITE;
+	return $self->overwrite_if if $disposition == DISPOSITION_OVERWRITE_IF;
+
+	warn "Invalid disposition $disposition, can not open file\n";
+	return;
+}
 
 1;

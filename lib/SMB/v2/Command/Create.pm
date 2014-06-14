@@ -20,16 +20,9 @@ use warnings;
 
 use parent 'SMB::v2::Command';
 
-use SMB::File;
+use SMB::OpenFile;
 
 use constant {
-	DISPOSITION_SUPERSEDE    => 0,  # exists ? supersede : create
-	DISPOSITION_OPEN         => 1,  # exists ? open      : fail
-	DISPOSITION_CREATE       => 2,  # exists ? fail      : create
-	DISPOSITION_OPEN_IF      => 3,  # exists ? open      : create
-	DISPOSITION_OVERWRITE    => 4,  # exists ? overwrite : fail
-	DISPOSITION_OVERWRITE_IF => 5,  # exists ? overwrite : create
-
 	OPTIONS_DIRECTORY_FILE            => 0x00000001,
 	OPTIONS_WRITE_THROUGH             => 0x00000002,
 	OPTIONS_SEQUENTIAL_ONLY           => 0x00000004,
@@ -48,11 +41,6 @@ use constant {
 	OPTIONS_OPEN_REPARSE_POINT        => 0x00200000,
 	OPTIONS_OPEN_NO_RECALL            => 0x00400000,
 	OPTIONS_OPEN_FOR_FREE_SPACE_QUERY => 0x00800000,
-
-	ACTION_SUPERSEDED  => 0,  # existing file was deleted and new file was created in its place
-	ACTION_OPENED      => 1,  # existing file was opened
-	ACTION_CREATED     => 2,  # new file was created
-	ACTION_OVERWRITTEN => 3,  # new file was overwritten
 };
 
 sub init ($) {
@@ -69,9 +57,8 @@ sub init ($) {
 		file_name       => '',
 
 		flags           => 0,
-		create_action   => 0,
-		file            => undef,
 		fid             => undef,
+		openfile        => undef,
 	)
 }
 
@@ -84,7 +71,7 @@ sub parse ($$) {
 
 		$self->oplock($parser->uint8);
 		$self->flags($parser->uint8);
-		$self->create_action($parser->uint32);
+		my $action = $parser->uint32;
 
 		my @file_params = (
 			$parser->uint64,  # creation_time
@@ -99,7 +86,7 @@ sub parse ($$) {
 
 		$parser->uint32;  # reserved
 		$self->fid($parser->fid2);
-		$self->file($file);
+		$self->openfile(SMB::OpenFile->new($file, 0, $action));
 	} else {
 		$self->security_flags($parser->uint8);
 		$self->oplock($parser->uint8);
@@ -126,7 +113,8 @@ sub pack ($$) {
 	my $packer = shift;
 
 	if ($self->is_response) {
-		my $file = $self->file;
+		my $openfile = $self->openfile;
+		my $file = $openfile && $openfile->file;
 
 		return $self->abort_pack($packer, SMB::STATUS_NO_SUCH_FILE)
 			unless $file && $file->exists && $self->fid;
@@ -134,7 +122,7 @@ sub pack ($$) {
 		$packer
 			->uint8($self->oplock)
 			->uint8($self->flags)
-			->uint32($self->create_action)
+			->uint32($openfile->action)
 			->uint64($file->creation_time)
 			->uint64($file->last_access_time)
 			->uint64($file->last_write_time)

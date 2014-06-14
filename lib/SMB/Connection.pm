@@ -34,7 +34,7 @@ sub new ($$;$%) {
 		id         => $id,
 		trees      => [],
 		last_fid   => 0,
-		open_files => {},
+		openfiles  => {},
 	);
 
 	bless $self, $class;

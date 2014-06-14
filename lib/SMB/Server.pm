@@ -101,9 +101,9 @@ sub on_command ($$$) {
 			$error = SMB::STATUS_SMB_BAD_TID;
 		}
 		elsif ($fid) {
-			my $file = $connection->{open_files}{@$fid}
+			my $openfile = $connection->{openfiles}{@$fid}
 				or $error = SMB::STATUS_FILE_CLOSED;
-			$command->file($file);
+			$command->openfile($openfile);
 		}
 
 		if ($error) {
@@ -124,24 +124,31 @@ sub on_command ($$$) {
 		}
 		elsif ($command->is('Create')) {
 			my $file = SMB::File->new(name => $command->file_name, share_root => $tree->root);
-			if ($file->exists) {
+			my $disposition = $command->disposition;
+			if ($file->exists && $disposition == SMB::File::DISPOSITION_OPEN) {
 				if ($command->requested_directory && !$file->is_directory) {
 					$error = SMB::STATUS_NOT_A_DIRECTORY;
 				} elsif ($command->requested_non_directory && $file->is_directory) {
 					$error = SMB::STATUS_FILE_IS_A_DIRECTORY;
-				} else {
-					my $fid = [ ++$connection->{last_fid}, 0 ];
-					$connection->{open_files}{@$fid} = $file;
-					$command->fid($fid);
-					$command->file($file);
-					$command->create_action(SMB::v2::Command::Create::ACTION_OPENED);
 				}
-			} else {
-				$error = SMB::STATUS_NO_SUCH_FILE;
+			}
+			unless ($error) {
+				my $openfile = $file->open_by_disposition($disposition);
+				if ($openfile) {
+					my $fid = [ ++$connection->{last_fid}, 0 ];
+					$connection->{open_files}{@$fid} = $openfile;
+					$command->fid($fid);
+					$command->openfile($openfile);
+				} else {
+					$error = SMB::STATUS_NO_SUCH_FILE;
+				}
 			}
 		}
 		elsif ($command->is('Close')) {
-			delete $connection->{open_files}{@$fid};
+			my $openfile = delete $connection->{openfiles}{@$fid};
+			if ($openfile) {
+				$openfile->close;
+			}
 		}
 		$command->prepare_response;
 		$command->set_status($error) if $error;
