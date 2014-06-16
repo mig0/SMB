@@ -20,6 +20,7 @@ package SMB::OpenFile;
 
 use parent 'SMB';
 
+use Fcntl 'SEEK_SET';
 use SMB::File;
 
 sub new ($$$$%) {
@@ -43,6 +44,23 @@ sub close ($) {
 	my $self = shift;
 
 	$self->file->delete_openfile($self);
+}
+
+sub read ($%) {
+	my $self = shift;
+	my %params = @_;  # length offset minlen remain
+
+	my $fh = $self->{handle} or return;
+	sysseek($fh, $params{offset} || 0, SEEK_SET) or return;
+
+	my $length = $params{length} // return;
+	my $minlen = $params{minlen} || 0;
+
+	my $buffer;
+	sysread($fh, $buffer, $length) // return;
+	return unless length($buffer) < $minlen;
+
+	return $buffer;
 }
 
 1;

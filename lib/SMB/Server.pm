@@ -96,12 +96,13 @@ sub on_command ($$$) {
 	if ($command->is_smb2) {
 		my $error = 0;
 		my $fid = $command->{fid};
+		my $openfile = undef;
 
 		if (($tid || exists $command->{fid}) && !$tree) {
 			$error = SMB::STATUS_SMB_BAD_TID;
 		}
 		elsif ($fid) {
-			my $openfile = $connection->{openfiles}{@$fid}
+			$openfile = $connection->{openfiles}{@$fid}
 				or $error = SMB::STATUS_FILE_CLOSED;
 			$command->openfile($openfile);
 		}
@@ -133,9 +134,9 @@ sub on_command ($$$) {
 				}
 			}
 			unless ($error) {
-				my $openfile = $file->open_by_disposition($disposition);
+				$openfile = $file->open_by_disposition($disposition);
 				if ($openfile) {
-					my $fid = [ ++$connection->{last_fid}, 0 ];
+					$fid = [ ++$connection->{last_fid}, 0 ];
 					$connection->{open_files}{@$fid} = $openfile;
 					$command->fid($fid);
 					$command->openfile($openfile);
@@ -145,10 +146,17 @@ sub on_command ($$$) {
 			}
 		}
 		elsif ($command->is('Close')) {
-			my $openfile = delete $connection->{openfiles}{@$fid};
-			if ($openfile) {
-				$openfile->close;
-			}
+			$openfile->close;
+			delete $connection->{openfiles}{@$fid};
+		}
+		elsif ($command->is('Read')) {
+			$command->{buffer} = $openfile->file->read(
+				length => $command->{length},
+				offset => $command->{offset},
+				minlen => $command->{minimum_count},
+				remain => $command->{remaining_bytes},
+			);
+			$error = SMB::STATUS_END_OF_FILE unless defined $command->{buffer};
 		}
 		$command->prepare_response;
 		$command->set_status($error) if $error;
