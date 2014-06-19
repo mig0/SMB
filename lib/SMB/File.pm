@@ -134,15 +134,18 @@ sub new ($%) {
 	return $self;
 }
 
-sub update ($$$$$$$$) {
+sub update ($$$$$$$$;$) {
 	my $self = shift;
 
 	$self->creation_time(shift);
 	$self->last_access_time(shift);
 	$self->last_write_time(shift);
 	$self->change_time(shift);
-	$self->allocation_size(shift);
-	$self->end_of_file(shift);
+	my $size1 = shift;
+	my $size2 = shift;
+	my $is_eof_first = shift;
+	$self->allocation_size($is_eof_first ? $size2 : $size1);
+	$self->end_of_file    ($is_eof_first ? $size1 : $size2);
 	$self->attributes(shift);
 
 	$self->exists($self->creation_time ? 1 : 0);

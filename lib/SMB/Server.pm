@@ -158,6 +158,13 @@ sub on_command ($$$) {
 			);
 			$error = SMB::STATUS_END_OF_FILE unless defined $command->{buffer};
 		}
+		elsif ($command->is('QueryDirectory')) {
+			$command->{files} = $openfile->file->find_files(
+				pattern => $command->file_pattern,
+				start_idx => $command->file_index,
+			);
+			$error = SMB::STATUS_INVALID_PARAMETER unless defined $command->{files};
+		}
 		$command->prepare_response;
 		$command->set_status($error) if $error;
 		$connection->send_command($command);
