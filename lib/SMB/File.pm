@@ -21,6 +21,8 @@ package SMB::File;
 use parent 'SMB';
 
 use Time::HiRes qw(stat);
+use File::Basename qw(basename);
+use File::Glob qw(:bsd_glob);
 use Fcntl qw(:mode O_DIRECTORY O_RDONLY O_RDWR O_CREAT O_EXCL O_TRUNC);
 use POSIX qw(strftime);
 use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
@@ -276,6 +278,35 @@ sub open_by_disposition ($$) {
 
 	warn "Invalid disposition $disposition, can not open file\n";
 	return;
+}
+
+sub find_files ($%) {
+	my $self = shift;
+	my %params = @_;
+
+	return unless $self->is_directory;
+
+	my $pattern = $params{pattern} || '*';
+	my $want_all = $pattern eq '*';
+	my $start_idx = $params{start_idx} || 0;
+	my $files = $self->{files};
+	my $name = $self->name;
+
+	# fix pattern if needed
+	my $pattern0 = $pattern;
+	$pattern0 =~ s/^\*/{.*,*}/;
+
+	unless ($want_all && $files) {
+		my @filenames = map { -e $_ && basename($_) } bsd_glob($self->filename . "/$pattern0", GLOB_NOCASE | GLOB_BRACE);
+		$self->msg("Find [$self->{filename}/$pattern] - " . scalar(@filenames) . " files");
+		$files = [ map { SMB::File->new(
+			name => $name eq '' ? $_ : "$name/$_",
+			share_root => $self->share_root,
+		) } @filenames ];
+		$self->{files} = $files if $want_all;
+	}
+
+	return $start_idx ? [ @{$files}[$start_idx .. (@$files - 1)] ] : $files;
 }
 
 1;
