@@ -137,7 +137,7 @@ sub on_command ($$$) {
 				$openfile = $file->open_by_disposition($disposition);
 				if ($openfile) {
 					$fid = [ ++$connection->{last_fid}, 0 ];
-					$connection->{open_files}{@$fid} = $openfile;
+					$connection->{openfiles}{@$fid} = $openfile;
 					$command->fid($fid);
 					$command->openfile($openfile);
 				} else {

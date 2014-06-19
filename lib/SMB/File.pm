@@ -21,7 +21,7 @@ package SMB::File;
 use parent 'SMB';
 
 use Time::HiRes qw(stat);
-use Fcntl qw(:mode O_CREAT O_EXCL O_TRUNC);
+use Fcntl qw(:mode O_DIRECTORY O_RDONLY O_RDWR O_CREAT O_EXCL O_TRUNC);
 use POSIX qw(strftime);
 use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
 
@@ -78,12 +78,9 @@ sub to_nttime ($) {
 sub from_ntattr ($) {
 	my $attr = shift || return 0;
 
-	return 0
-		| ($attr & ATTR_NORMAL    ? S_IFREG : 0)
-		| ($attr & ATTR_DIRECTORY ? S_IFDIR : 0)
-		| ($attr & ATTR_DEVICE    ? S_IFCHR : 0)
-		| ($attr & ATTR_READONLY  ? 0444 : 0666)
-		;
+	return
+		$attr & ATTR_DIRECTORY ? O_DIRECTORY :
+		$attr & ATTR_READONLY ? O_RDONLY : O_RDWR;
 }
 
 sub to_ntattr ($) {
@@ -110,8 +107,10 @@ sub new ($%) {
 	my $filename = undef;
 	if ($root) {
 		die "No share_root directory ($root)" unless -d $root;
-		1 while $root =~ s=(^|/)(?!\.\./)[^/]+/\.\.=$1=;
-		$filename = "$root/$name";
+		1 while $root =~ s=(^|/)(?!\.\./)[^/]+/\.\./=$1=;
+		$filename = $name eq '' ? $root : "$root/$name";
+		$filename =~ s!/{2,}!/!g;
+		$filename = '.' if $filename eq '';
 	}
 	my @stat = $filename && -e $filename ? stat($filename) : ();
 
@@ -195,6 +194,7 @@ sub _fail_exists ($$) {
 	my $self = shift;
 	my $exists = shift;
 
+	$self->err("Can't open file [$self->{filename}]: $!");
 	$self->exists($exists || 0);
 
 	return undef;
@@ -213,11 +213,11 @@ sub supersede ($) {
 	my $openfile = $self->create;
 	unless ($openfile) {
 		rename($tmp_filename, $filename)
-			or warn "Can't rename tmp file ($tmp_filename) to orig file ($filename)\n";
+			or $self->err("Can't rename tmp file ($tmp_filename) to orig file ($filename)");
 		return $self->_fail_exists(0);
 	}
 	unlink($tmp_filename)
-		or warn "Can't remove tmp file ($tmp_filename)\n";
+		or $self->err("Can't remove tmp file ($tmp_filename)");
 
 	$openfile->action(ACTION_SUPERSEDED);
 
