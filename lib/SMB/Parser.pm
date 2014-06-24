@@ -31,21 +31,22 @@ sub new ($$) {
 	return $self->set($data);
 }
 
-sub reset ($) {
+sub reset ($;$) {
 	my $self = shift;
+	my $offset = shift || 0;
 
-	$self->{offset} = 0;
+	$self->{offset} = $offset;
 
 	return $self;
 }
 
-sub set ($$) {
+sub set ($$;$) {
 	my $self = shift;
 
 	$self->{data} = $_[0];
 	$self->{size} = length($_[0]);
 
-	return $self->reset;
+	return $self->reset($_[1]);
 }
 
 sub data { $_[0]->{data} }
