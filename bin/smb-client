@@ -21,7 +21,7 @@ sub show_usage (;$) {
 	my $out = $is_error ? \*STDERR : \*STDOUT;
 	my $usage = qq{
 		Usage: $0 [OPTIONS] //server/share
-		Measure performance of operations like download/upload/office.
+		Start a simple SMB client
 
 		Options:
 			-h --help            show this usage
@@ -34,9 +34,9 @@ sub show_usage (;$) {
 }
 
 GetOptions(
-	'h|help'        => sub { show_usage(0) },
-	'v|verbose+'    => \$verbose,
-	'U|username'    => \$username,
+	'h|help'       => sub { show_usage(0) },
+	'v|verbose+'   => \$verbose,
+	'U|username=s' => \$username,
 ) or show_usage(1);
 
 my $share_uri = shift || '//localhost/users';

@@ -32,7 +32,6 @@ sub show_usage (;$) {
 			-f --fifo FILENAME   use named file (fifo) file to listen on instead
 			-q --quiet           do not show any messages
 			-d --debug LVL       create log file with debug info
-			-U --username u[%p]  SMB username and password (prompted if absent)
 	};
 	$usage =~ s/^\n//; $usage =~ s/^\t\t?//mg;
 	print $out $usage;
