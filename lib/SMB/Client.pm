@@ -47,9 +47,11 @@ sub init ($$%) {
 
 	$options{id} ? $self->{id} = $options{id} : $self->{id}++;
 
-	my ($addr, $share) = $self->parse_share_uri($share_uri);
-	die "Please specify share uri //server.name.or.ip[:port]/share\n"
-		unless $addr && $share;
+	my ($addr, $share) = $share_uri =~ m![/\\]!
+		? $self->parse_share_uri($share_uri)
+		: ($share_uri);
+	die "Please specify share uri //server.name.or.ip[:port]/share or server.name.or.ip[:port]\n"
+		unless $addr;
 	$addr .= ':445' unless $addr =~ /:/;
 
 	my $socket = IO::Socket::INET->new(PeerAddr => $addr, Proto => 'tcp')
@@ -62,7 +64,7 @@ sub init ($$%) {
 	$self->{username} = $options{username};
 	$self->{password} = $options{password};
 
-	$self->msg("SMB client #$self->{id} created for server $addr share $share");
+	$self->msg("SMB client #$self->{id} created for server $addr" . (defined $share ? " share $share" : ''));
 
 	return $self;
 }
@@ -75,6 +77,19 @@ sub connect ($%) {
 	my $password = $self->{password} || $options{password} || die "No password to connect\n";
 
 	return;
+}
+
+sub send_nbss ($$) {
+	my $self = shift;
+	my $data = shift;
+
+	$self->mem($data, "-> NetBIOS Packet");
+
+	my $size = length($data);
+	if (!$self->socket->write($data, $size)) {
+		$self->err("Can't write full packet");
+		return;
+	}
 }
 
 sub normalize_path ($$) {
