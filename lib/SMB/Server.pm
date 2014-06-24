@@ -37,7 +37,7 @@ sub new ($%) {
 	my $port = delete $options{port};
 	my $fifo_filename = delete $options{fifo_filename};
 
-	die "Neither port nor fifo-filename is specified for server\n"
+	die "Neither port nor fifo-filename is specified for $class\n"
 		unless $port || $fifo_filename;
 
 	my $main_socket = $fifo_filename
@@ -65,6 +65,9 @@ sub new ($%) {
 	unless ($share_roots) {
 		$self->err("No share_roots specified and no shares/ autodetected");
 		$share_roots = {};
+	} elsif (ref($share_roots) eq '' && $share_roots eq '-') {
+		# special syntax to request a share-less server, don't complain
+		$share_roots = {};
 	} elsif (ref($share_roots) ne 'HASH') {
 		$self->err("Invalid share_roots ($share_roots) specified");
 		$share_roots = {};
@@ -73,9 +76,52 @@ sub new ($%) {
 	}
 	$self->{share_roots} = $share_roots;
 
-	$self->msg("SMB server started, listening on $listen_label");
+	$self->msg("$class started, listening on $listen_label");
 
 	return $self;
+}
+
+sub add_connection ($$$) {
+	my $self = shift;
+	my $socket = shift;
+	my $id = shift;
+
+	my $connection = SMB::Connection->new($socket, $id, quiet => $self->{quiet}) or return;
+	$self->socket_pool->add($socket);
+	$self->connections->{$socket->fileno} = $connection;
+
+	return $connection;
+}
+
+sub delete_connection ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	my $socket = $connection->socket;
+	$self->socket_pool->remove($socket);
+	delete $self->connections->{$socket->fileno};
+	$connection->close;
+}
+
+sub on_connect ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	# intended to be overriden in sub-classes
+}
+
+sub on_disconnect ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	# intended to be overriden in sub-classes
+}
+
+sub recv_command ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	return $connection->recv_command;
 }
 
 sub on_command ($$$) {
@@ -184,21 +230,20 @@ sub run ($) {
 		foreach my $socket (@ready_sockets) {
 			if ($socket == $self->main_socket) {
 				my $client_socket = $socket->accept || next;
-				$socket_pool->add($client_socket);
-				my $connection = SMB::Connection->new($client_socket, ++$self->{client_id}, quiet => $self->{quiet});
+				my $connection = $self->add_connection($client_socket, ++$self->{client_id});
 				unless ($connection) {
 					$socket->close;
 					next;
 				}
-				$connections->{$client_socket->fileno} = $connection;
+				$self->on_connect($connection);
 			}
 			else {
 				my $fd = $socket->fileno;
 				my $connection = $connections->{$fd} || die "Unexpected data on unexisting fd $fd";
-				my $command = $connection->recv_command;
+				my $command = $self->recv_command($connection);
 				if (!$command) {
-					$socket_pool->remove($socket);
-					delete $connections->{$fd};
+					$self->on_disconnect($connection);
+					$self->delete_connection($connection);
 					next;
 				}
 				$self->on_command($connection, $command);
