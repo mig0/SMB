@@ -16,7 +16,8 @@ my $port = 445;
 my $fifo_filename = undef;
 my $quiet = 0;
 my $debug = 1;
-my $username = $ENV{USER} || $ENV{LOGNAME} || 'guest';
+my $username = undef;
+my $password = undef;
 
 sub show_usage (;$) {
 	my $is_error = shift || 0;
@@ -30,7 +31,7 @@ sub show_usage (;$) {
 			-p --port PORT       use port different from the default $port
 			-f --fifo FILENAME   use named file (fifo) file to listen on instead
 			-q --quiet           do not show any messages
-			-U --username u[%p]  SMB server username and password (prompted if absent)
+			-U --username u[%p]  SMB server username and password (not used)
 	};
 	$usage =~ s/^\n//; $usage =~ s/^\t\t?//mg;
 	print $out $usage;
@@ -59,8 +60,11 @@ sub prompt ($) {
 
 my $server_addr = shift || show_usage(1);
 
-my $password = $username =~ s/%(.*)$// ? $1 : undef;
-$password //= prompt("Enter password on server $server_addr for user '$username'");
+# server username and password are not really needed for dumb SMB proxy
+if ($username) {
+	$password = $username =~ s/%(.*)$// ? $1 : undef;
+	$password //= prompt("Enter password on server $server_addr for user '$username'");
+}
 
 my $proxy = SMB::Proxy->new(
 	server_addr     => $server_addr,
