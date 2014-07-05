@@ -4,7 +4,39 @@ network protocol (also called CIFS - Common Internet File System).
 Currently the intention is to support SMB protocol version 2.
 Support for SMB 1 and SMB 3 may be added in the future.
 
+A simple implementation of SMB server, client and proxy is included.
+
+Usage:
+	bin/smb-server -p 10445
+
+	bin/smb-client -U username%password //server/share
+
+	bin/smb-proxy -p 10445 10.0.2.2:445
+
+Classes:
+	SMB
+	SMB::Client
+	SMB::Command
+	SMB::Connection
+	SMB::File
+	SMB::Header
+	SMB::OpenFile
+	SMB::Packer
+	SMB::Parser
+	SMB::Proxy
+	SMB::Server
+	SMB::Tree
+	SMB::v1::Command
+	SMB::v1::Command::*
+	SMB::v1::Commands
+	SMB::v1::Header
+	SMB::v2::Command
+	SMB::v2::Command::*
+	SMB::v2::Commands
+	SMB::v2::Header
+
 Author:
 	Mikhael Goikhman <migo@freeshell.org>
+
 Web site:
 	http://migo.sixbit.org/software/perl-smb/
