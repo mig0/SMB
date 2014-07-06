@@ -32,9 +32,10 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
-	my $share_roots = delete $options{share_roots};
-
-	my $port = delete $options{port};
+	my $quiet         = delete $options{quiet}   || 0;
+	my $verbose       = delete $options{verbose} || 0;
+	my $share_roots   = delete $options{share_roots};
+	my $port          = delete $options{port};
 	my $fifo_filename = delete $options{fifo_filename};
 
 	die "Neither port nor fifo-filename is specified for $class\n"
@@ -49,13 +50,13 @@ sub new ($%) {
 
 	my $self = $class->SUPER::new(
 		%options,
+		quiet       => $quiet,
+		verbose     => $verbose,
 		main_socket => $main_socket,
 		socket_pool => IO::Select->new($main_socket),
 		connections => {},
-		client_id => 0,  # running index
+		client_id   => 0,  # running index
 	);
-
-	bless $self, $class;
 
 	if (!$share_roots && $FindBin::Bin) {
 		my $shares_dir = "$FindBin::Bin/../shares";
@@ -86,7 +87,14 @@ sub add_connection ($$$) {
 	my $socket = shift;
 	my $id = shift;
 
-	my $connection = SMB::Connection->new($socket, $id, quiet => $self->{quiet}) or return;
+	my $connection = SMB::Connection->new(
+		$socket, $id,
+		quiet     => $self->quiet,
+		verbose   => $self->verbose,
+		trees     => [],
+		last_fid  => 0,
+		openfiles => {},
+	) or return;
 	$self->socket_pool->add($socket);
 	$self->connections->{$socket->fileno} = $connection;
 

@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::Client;
+
 use strict;
 use warnings;
 
 use bytes;
 use integer;
-
-package SMB::Client;
 
 use parent 'SMB';
 
@@ -30,10 +30,14 @@ sub new ($$%) {
 	my $share_uri = shift;
 	my %options = @_;
 
+	my $quiet   = delete $options{quiet}   || 0;
+	my $verbose = delete $options{verbose} || 0;
+
 	my $self = $class->SUPER::new(
+		%options,
+		quiet   => $quiet,
+		verbose => $verbose,
 		id      => 0,
-		quiet   => delete $options{quiet} || 0,
-		verbose => delete $options{verbose} || 0,
 		cwd     => '',
 	);
 
@@ -77,19 +81,6 @@ sub connect ($%) {
 	my $password = $self->{password} || $options{password} || die "No password to connect\n";
 
 	return;
-}
-
-sub send_nbss ($$) {
-	my $self = shift;
-	my $data = shift;
-
-	$self->mem($data, "-> NetBIOS Packet");
-
-	my $size = length($data);
-	if (!$self->socket->write($data, $size)) {
-		$self->err("Can't write full packet");
-		return;
-	}
 }
 
 sub normalize_path ($$) {

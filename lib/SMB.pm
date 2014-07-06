@@ -67,12 +67,11 @@ sub new ($%) {
 
 	my $parser = delete $options{parser} // SMB::Parser->new;
 	my $packer = delete $options{packer} // SMB::Packer->new;
-	my $quiet  = delete $options{quiet};
 
 	my $self = {
 		parser => $parser,
 		packer => $packer,
-		disable_log => $quiet,
+		disable_log => $options{quiet},
 		%options,
 	};
 

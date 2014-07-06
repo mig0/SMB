@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::Proxy;
+
 use strict;
 use warnings;
-
-package SMB::Proxy;
 
 use parent 'SMB::Server';
 
@@ -28,11 +28,16 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
-	my %client_options = map { $_ => $options{$_} }
+	my $quiet   = $options{quiet}   ||= 0;
+	my $verbose = $options{verbose} ||= 0;
+
+	my %client_options = map { $_ => delete $options{$_} }
 		qw(server_addr server_username server_password quiet verbose);
 
 	my $self = $class->SUPER::new(
 		%options,
+		quiet          => $quiet,
+		verbose        => $verbose,
 		share_roots    => '-',
 		client_options => \%client_options,
 	);
@@ -48,10 +53,10 @@ sub on_connect ($$) {
 	my %options = %{$self->{client_options}};
 	my $client = SMB::Client->new(
 		$options{server_addr},
-		username => $options{server_username},
-		password => $options{server_password},
 		quiet    => $options{quiet},
 		verbose  => $options{verbose},
+		username => $options{server_username},
+		password => $options{server_password},
 	);
 
 	my $connection2 = $self->add_connection($client->socket, -$self->client_id);

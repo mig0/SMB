@@ -28,13 +28,15 @@ sub new ($$;$%) {
 	my $id = shift || 0;
 	my %options = @_;
 
+	my $quiet   = delete $options{quiet}   || 0;
+	my $verbose = delete $options{verbose} || 0;
+
 	my $self = $class->SUPER::new(
 		%options,
-		socket     => $socket,
-		id         => $id,
-		trees      => [],
-		last_fid   => 0,
-		openfiles  => {},
+		quiet   => $quiet,
+		verbose => $verbose,
+		socket  => $socket,
+		id      => $id,
 	);
 
 	bless $self, $class;
@@ -104,7 +106,8 @@ sub recv_command ($) {
 		return;
 	}
 	my $is_smb1 = $smb_num == 0xff;
-	$self->mem($self->parser->data, "<- SMB Packet");
+	$self->mem($self->parser->data, "<- SMB Packet")
+		if $self->verbose;
 
 	my $command = $is_smb1
 		? $self->parse_smb1
@@ -123,7 +126,9 @@ sub send_nbss ($$) {
 	my $self = shift;
 	my $data = shift;
 
-	$self->mem($data, "-> NetBIOS Packet");
+	$self->mem($data, "-> NetBIOS Packet")
+		if $self->verbose;
+
 	if (!$self->socket->write($data, length($data))) {
 		$self->err("Can't write full packet");
 		return;

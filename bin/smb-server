@@ -17,7 +17,7 @@ use SMB::Server;
 my $port = 445;
 my $fifo_filename = undef;
 my $quiet = 0;
-my $debug = 1;
+my $verbose = 0;
 
 sub show_usage (;$) {
 	my $is_error = shift || 0;
@@ -31,7 +31,7 @@ sub show_usage (;$) {
 			-p --port PORT       use port different from the default $port
 			-f --fifo FILENAME   use named file (fifo) file to listen on instead
 			-q --quiet           do not show any messages
-			-d --debug LVL       create log file with debug info
+			-v --verbose         show more debug messages (multiple)
 	};
 	$usage =~ s/^\n//; $usage =~ s/^\t\t?//mg;
 	print $out $usage;
@@ -39,18 +39,18 @@ sub show_usage (;$) {
 }
 
 GetOptions(
-	'h|help'    => sub { show_usage(0) },
-	'p|port=i'  => \$port,
-	'f|fifo=s'  => \$fifo_filename,
-	'q|quiet'   => \$quiet,
-	'd|debug=i' => \$debug,
+	'h|help'     => sub { show_usage(0) },
+	'p|port=i'   => \$port,
+	'f|fifo=s'   => \$fifo_filename,
+	'q|quiet'    => \$quiet,
+	'v|verbose+' => \$verbose,
 ) or show_usage(1);
 
 my $server = SMB::Server->new(
-	port => $port,
+	port          => $port,
 	fifo_filename => $fifo_filename,
-	quiet => $quiet,
-	debug => $debug,
+	quiet         => $quiet,
+	verbose       => $verbose,
 );
 
 $server->run;
