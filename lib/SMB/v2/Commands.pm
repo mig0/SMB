@@ -203,10 +203,11 @@ sub pack ($$$%) {
 	$packer->bytes("\0" x 16);      # no message signing for now
 
 	$packer->mark('header-end');
-	$packer->uint16($struct_size);
+	$packer->uint16($command->is_success ? $struct_size : 9);
 	$packer->mark('command-start');
 
 	$command->pack($packer) if $command->is_success || $command->is('SessionSetup');
+	$packer->zero(6 + 1) if $command->is_error && !$command->is('SessionSetup');
 
 	my $payload_allowed = $struct_size % 2;
 	my $size = $packer->diff('header-end');
