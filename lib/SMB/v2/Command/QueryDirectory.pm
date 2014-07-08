@@ -20,9 +20,23 @@ use warnings;
 
 use parent 'SMB::v2::Command';
 
+use constant {
+	INFO_LEVEL_DIRECTORY       => 0x1,
+	INFO_LEVEL_FULLDIRECTORY   => 0x2,
+	INFO_LEVEL_BOTHDIRECTORY   => 0x3,
+	INFO_LEVEL_NAMES           => 0xc,
+	INFO_LEVEL_IDBOTHDIRECTORY => 0x25,
+	INFO_LEVEL_IDFULLDIRECTORY => 0x26,
+
+	FLAGS_RESCAN => 0x1,
+	FLAGS_SINGLE => 0x2,
+	FLAGS_INDEX  => 0x4,
+	FLAGS_REOPEN => 0x10,
+};
+
 sub init ($) {
 	$_[0]->set(
-		info_level    => 0,
+		info_level    => INFO_LEVEL_IDBOTHDIRECTORY,
 		flags         => 0,
 		file_index    => 0,
 		file_pattern  => '*',
@@ -94,16 +108,22 @@ sub pack ($$) {
 			->mark('buffer-start')
 		;
 
+		my $level = $self->info_level;
 		my $length = 0;
 		my $i = 0;
 		for my $file (@$files) {
 			my $filename = $file->name;
 			my $short_filename = $file->{short_name} || '';
+			# pad and cut short name to exactly 12 chars
+			$short_filename .= "\0" x (12 - length($short_filename));
+			substr($short_filename, 12) = "";
 
 			$packer
 				->mark('file-info-start')
 				->stub('next-diff', 'uint32')
 				->uint32($file_index + $i)
+			;
+			$packer
 				->uint64($file->creation_time)
 				->uint64($file->last_access_time)
 				->uint64($file->last_write_time)
@@ -111,20 +131,34 @@ sub pack ($$) {
 				->uint64($file->end_of_file)
 				->uint64($file->allocation_size)
 				->uint32($file->attributes)
-				->uint32(length($filename))
+				unless $level == INFO_LEVEL_NAMES
+			;
+			$packer
+				->uint32(length($filename) * 2)
+			;
+			$packer
 				->uint32($file->{ea_size} || 0)  # TODO
-				->uint8 (length($short_filename))
+				unless $level == INFO_LEVEL_NAMES
+			;
+			$packer
+				->uint8 (length($short_filename) * 2)
 				->uint8 (0)
 				->utf16($short_filename)
-				->uint16(0)  # TODO: pad
+				if $level == INFO_LEVEL_BOTHDIRECTORY || $level == INFO_LEVEL_IDBOTHDIRECTORY
+			;
+			$packer
+				->zero($level == INFO_LEVEL_IDFULLDIRECTORY ? 4 : 2)
 				->uint64($file->{id} || 0)
+				if $level == INFO_LEVEL_IDFULLDIRECTORY || $level == INFO_LEVEL_IDBOTHDIRECTORY
+			;
+			$packer
 				->utf16($filename)
-				->uint16(0)  # TODO: pad
 				->fill('next-diff', ++$i == @$files ? 0 : $packer->diff('file-info-start'))
 			;
 		}
 
 		$packer->fill('buffer-length', $packer->diff('buffer-start'));
+		$self->openfile->last_index($file_index + $i);
 	} else {
 		$packer
 			->uint8($self->info_level)

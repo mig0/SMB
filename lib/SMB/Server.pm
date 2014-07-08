@@ -24,6 +24,7 @@ use File::Basename qw(basename);
 use SMB::Tree;
 use SMB::v2::Command::Negotiate;
 use SMB::v2::Command::Create;
+use SMB::v2::Command::QueryDirectory;
 
 sub new ($%) {
 	my $class = shift;
@@ -177,6 +178,8 @@ sub on_command ($$$) {
 			$error = SMB::STATUS_END_OF_FILE unless defined $command->{buffer};
 		}
 		elsif ($command->is('QueryDirectory')) {
+			$command->file_index($openfile->last_index)
+				unless $command->flags & SMB::v2::Command::QueryDirectory::FLAGS_INDEX;
 			$command->{files} = $openfile->file->find_files(
 				pattern => $command->file_pattern,
 				start_idx => $command->file_index,

@@ -34,6 +34,7 @@ sub new ($$$$%) {
 		file    => $file,
 		handle  => $handle,
 		action  => $action,
+		last_index => 0,
 		%options,
 	);
 
