@@ -18,10 +18,7 @@ package SMB::Client;
 use strict;
 use warnings;
 
-use bytes;
-use integer;
-
-use parent 'SMB';
+use parent 'SMB::Agent';
 
 use IO::Socket;
 
@@ -35,21 +32,20 @@ sub new ($$%) {
 
 	my $self = $class->SUPER::new(
 		%options,
-		quiet   => $quiet,
-		verbose => $verbose,
-		id      => 0,
-		cwd     => '',
+		cwd       => '',
+		server_id => 0,  # running index
 	);
 
-	return $self->init($share_uri, %options);
+	$self->connect($share_uri, %options)
+		if $share_uri;
+
+	return $self;
 }
 
-sub init ($$%) {
+sub connect ($$%) {
 	my $self = shift;
 	my $share_uri = shift;
 	my %options = @_;
-
-	$options{id} ? $self->{id} = $options{id} : $self->{id}++;
 
 	my ($addr, $share) = $share_uri =~ m![/\\]!
 		? $self->parse_share_uri($share_uri)
@@ -61,19 +57,24 @@ sub init ($$%) {
 	my $socket = IO::Socket::INET->new(PeerAddr => $addr, Proto => 'tcp')
 		or	die "Can't open $addr: $!\n";
 
-	$self->{socket}   = $socket;
-	$self->{tree}     = undef;
-	$self->{addr}     = $addr;
-	$self->{share}    = $share;
-	$self->{username} = $options{username};
-	$self->{password} = $options{password};
-
-	$self->msg("SMB client #$self->{id} created for server $addr" . (defined $share ? " share $share" : ''));
+	if ($options{just_socket}) {
+		$self->{socket} = $socket;
+	} else {
+		$self->add_connection(
+			$socket, --$self->{server_id},
+			addr     => $addr,
+			share    => $share,
+			username => $options{username},
+			password => $options{password},
+			tree     => undef,
+			openfiles => {},
+		);
+	}
 
 	return $self;
 }
 
-sub connect ($%) {
+sub connect_tree ($%) {
 	my $self = shift;
 	my %options = @_;
 

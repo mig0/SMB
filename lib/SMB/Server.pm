@@ -18,12 +18,9 @@ package SMB::Server;
 use strict;
 use warnings;
 
-use parent 'SMB';
+use parent 'SMB::Agent';
 
-use IO::Socket;
-use IO::Select;
 use File::Basename qw(basename);
-use SMB::Connection;
 use SMB::Tree;
 use SMB::v2::Command::Negotiate;
 use SMB::v2::Command::Create;
@@ -32,8 +29,6 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
-	my $quiet         = delete $options{quiet}   || 0;
-	my $verbose       = delete $options{verbose} || 0;
 	my $share_roots   = delete $options{share_roots};
 	my $port          = delete $options{port};
 	my $fifo_filename = delete $options{fifo_filename};
@@ -50,13 +45,11 @@ sub new ($%) {
 
 	my $self = $class->SUPER::new(
 		%options,
-		quiet       => $quiet,
-		verbose     => $verbose,
 		main_socket => $main_socket,
-		socket_pool => IO::Select->new($main_socket),
-		connections => {},
 		client_id   => 0,  # running index
 	);
+
+	$self->socket_pool->add($main_socket);
 
 	if (!$share_roots && $FindBin::Bin) {
 		my $shares_dir = "$FindBin::Bin/../shares";
@@ -80,35 +73,6 @@ sub new ($%) {
 	$self->msg("$class started, listening on $listen_label");
 
 	return $self;
-}
-
-sub add_connection ($$$) {
-	my $self = shift;
-	my $socket = shift;
-	my $id = shift;
-
-	my $connection = SMB::Connection->new(
-		$socket, $id,
-		quiet     => $self->quiet,
-		verbose   => $self->verbose,
-		trees     => [],
-		last_fid  => 0,
-		openfiles => {},
-	) or return;
-	$self->socket_pool->add($socket);
-	$self->connections->{$socket->fileno} = $connection;
-
-	return $connection;
-}
-
-sub delete_connection ($$) {
-	my $self = shift;
-	my $connection = shift;
-
-	my $socket = $connection->socket;
-	$self->socket_pool->remove($socket);
-	delete $self->connections->{$socket->fileno};
-	$connection->close;
 }
 
 sub on_connect ($$) {
@@ -238,7 +202,12 @@ sub run ($) {
 		foreach my $socket (@ready_sockets) {
 			if ($socket == $self->main_socket) {
 				my $client_socket = $socket->accept || next;
-				my $connection = $self->add_connection($client_socket, ++$self->{client_id});
+				my $connection = $self->add_connection(
+					$client_socket, ++$self->{client_id},
+					trees     => [],
+					last_fid  => 0,
+					openfiles => {},
+				);
 				unless ($connection) {
 					$socket->close;
 					next;

@@ -57,6 +57,7 @@ sub on_connect ($$) {
 		verbose  => $options{verbose},
 		username => $options{server_username},
 		password => $options{server_password},
+		just_socket => 1,
 	);
 
 	my $connection2 = $self->add_connection($client->socket, -$self->client_id);

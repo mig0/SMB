@@ -22,14 +22,22 @@ use bytes;
 
 use parent 'SMB';
 
-sub new ($$;$%) {
+sub new ($$$%) {
 	my $class = shift;
-	my $socket = shift;
-	my $id = shift || 0;
+	my $socket = shift || die "No socket";
+	my $id = shift || die "No id";
 	my %options = @_;
 
 	my $quiet   = delete $options{quiet}   || 0;
 	my $verbose = delete $options{verbose} || 0;
+
+	my $id_str = '';
+	unless ($quiet) {
+		my $addr = $socket->peerhost();
+		my $port = $socket->peerport();
+		my ($id0, $str) = $id =~ /^-(.*)/ ? ($1, 'server') : ($id, 'client');
+		$id_str = "$str #$id0 [$addr:$port]";
+	}
 
 	my $self = $class->SUPER::new(
 		%options,
@@ -37,6 +45,7 @@ sub new ($$;$%) {
 		verbose => $verbose,
 		socket  => $socket,
 		id      => $id,
+		id_str  => $id_str,
 	);
 
 	bless $self, $class;
@@ -155,9 +164,7 @@ sub log ($$$) {
 	my $is_err = shift;
 	my $format = shift;
 	return if $self->{disable_log};
-	my $addr = $self->socket->peerhost();
-	my $port = $self->socket->peerport();
-	$format =~ s/(\s+\(|$)/ - client #$self->{id} [$addr:$port]$1/;
+	$format =~ s/(:?$)/ - $self->{id_str}$1/;
 	$self->SUPER::log($is_err, $format, @_);
 }
 
