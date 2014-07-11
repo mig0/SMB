@@ -30,6 +30,7 @@ sub new ($%) {
 
 	$options{quiet}   ||= 0;
 	$options{verbose} ||= 0;
+	$options{unique_conn_addr} ||= 0;
 
 	my $self = $class->SUPER::new(
 		%options,
@@ -40,11 +41,33 @@ sub new ($%) {
 	return $self;
 }
 
+sub get_connection_key ($$) {
+	my $self = shift;
+	my $socket = shift;
+
+	return $self->unique_conn_addr
+		? SMB::Connection->get_socket_addr($socket)
+		: $socket->fileno;
+}
+
+sub get_connection ($$) {
+	my $self = shift;
+	my $socket = shift;
+
+	my $key = $self->get_connection_key($socket)
+		or return;
+
+	return $self->connections->{$key};
+}
+
 sub add_connection ($$$%) {
 	my $self = shift;
 	my $socket = shift;
 	my $id = shift;
 	my %options = @_;
+
+	my $key = $self->get_connection_key($socket);
+	return $self->connections->{$key} if $self->connections->{$key};
 
 	my $connection = SMB::Connection->new(
 		$socket, $id,
@@ -53,9 +76,9 @@ sub add_connection ($$$%) {
 		%options,
 	) or return;
 	$self->socket_pool->add($socket);
-	$self->connections->{$socket->fileno} = $connection;
+	$self->connections->{$key} = $connection;
 
-	return $connection;
+	return wantarray ? ($key, $connection) : $connection;
 }
 
 sub delete_connection ($$) {
@@ -64,7 +87,7 @@ sub delete_connection ($$) {
 
 	my $socket = $connection->socket;
 	$self->socket_pool->remove($socket);
-	delete $self->connections->{$socket->fileno};
+	delete $self->connections->{$self->get_connection_key($socket)};
 	$connection->close;
 }
 

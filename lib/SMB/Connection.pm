@@ -31,24 +31,19 @@ sub new ($$$%) {
 	my $quiet   = delete $options{quiet}   || 0;
 	my $verbose = delete $options{verbose} || 0;
 
-	my $id_str = '';
-	unless ($quiet) {
-		my $addr = $socket->peerhost();
-		my $port = $socket->peerport();
-		my ($id0, $str) = $id =~ /^-(.*)/ ? ($1, 'server') : ($id, 'client');
-		$id_str = "$str #$id0 [$addr:$port]";
-	}
-
 	my $self = $class->SUPER::new(
 		%options,
 		quiet   => $quiet,
 		verbose => $verbose,
 		socket  => $socket,
 		id      => $id,
-		id_str  => $id_str,
 	);
 
-	bless $self, $class;
+	unless ($self->disable_log) {
+		my $addr_with_port = $self->get_socket_addr;
+		my ($id0, $str) = $id =~ /^-(.*)/ ? ($1, 'server') : ($id, 'client');
+		$self->{id_str} = "$str #$id0 [$addr_with_port]";
+	}
 
 	$self->msg("Connected");
 
@@ -71,6 +66,16 @@ sub close ($) {
 
 	$socket->close;
 	$self->socket(undef);
+}
+
+sub get_socket_addr ($;$) {
+	my $this = shift;
+	my $socket = shift || ref($this) && $this->socket || return;
+
+	my $host = $socket->peerhost();
+	my $port = $socket->peerport();
+
+	return wantarray ? ($host, $port) : "$host:$port";
 }
 
 sub recv_nbss ($) {

@@ -218,8 +218,8 @@ sub run ($) {
 				$self->on_connect($connection);
 			}
 			else {
-				my $fd = $socket->fileno;
-				my $connection = $connections->{$fd} || die "Unexpected data on unexisting fd $fd";
+				my $connection = $self->get_connection($socket)
+					or die "Unexpected data on unmanaged $socket";
 				my $command = $self->recv_command($connection);
 				if (!$command) {
 					$self->on_disconnect($connection);
