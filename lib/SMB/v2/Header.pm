@@ -37,24 +37,28 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
-	my $self = $class->SUPER::new(
+	return $class->SUPER::new(
 		aid           => delete $options{aid} || 0,
 		credits       => delete $options{credits} || 0,
 		credit_charge => delete $options{credit_charge} || 0,
 		struct_size   => delete $options{struct_size} || 2,
 		%options,
 	);
+}
 
-	return $self;
+sub is_response ($) {
+	my $self = shift;
+
+	return $self->flags & FLAGS_RESPONSE ? 1 : 0;
 }
 
 sub is_signed ($) {
 	my $self = shift;
-	my $signature = $self->{signature};
+	my $signature = $self->signature;
 
 	return ref($signature) eq 'ARRAY' && @$signature == 16 &&
 		(join('', $signature) ne "\0" x 16) &&
-		($self->{flags} & FLAGS_SIGNED) != 0;
+		($self->flags & FLAGS_SIGNED) != 0;
 }
 
 1;

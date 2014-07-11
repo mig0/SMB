@@ -41,10 +41,10 @@ sub new ($$%) {
 	return $self;
 }
 
-sub is_response ($) {
+sub prepare_response ($) {
 	my $self = shift;
 
-	return $self->header->{flags} & SMB::v1::Header::FLAGS_RESPONSE ? 1 : 0;
+	$self->header->{flags} |= SMB::v1::Header::FLAGS_RESPONSE;
 }
 
 1;

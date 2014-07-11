@@ -41,17 +41,11 @@ sub new ($$%) {
 	return $self;
 }
 
-sub is_response ($) {
-	my $self = shift;
-
-	return $self->header->{flags} & SMB::v2::Header::FLAGS_RESPONSE ? 1 : 0;
-}
-
 sub prepare_response ($) {
 	my $self = shift;
 
 	$self->header->{flags} |= SMB::v2::Header::FLAGS_RESPONSE;
-	$self->header->{credits} = 31 if $self->header->{credits} > 31;
+	$self->header->credits(31) if $self->header->credits > 31;
 }
 
 1;
