@@ -18,6 +18,8 @@ use warnings;
 
 package SMB::Header;
 
+use parent 'SMB';
+
 sub new ($%) {
 	my $class = shift;
 	my %options = @_;
@@ -25,7 +27,7 @@ sub new ($%) {
 	$options{code} // die "No code for $class";
 	$options{mid}  // die "No message id for $class";
 
-	my $self = {
+	return $class->SUPER::new(
 		%options,
 		code      => $options{code},
 		status    => $options{status} || 0,
@@ -34,9 +36,11 @@ sub new ($%) {
 		mid       => $options{mid},
 		flags     => $options{flags} || 0,
 		signature => $options{signature},
-	};
+	);
+}
 
-	bless $self, $class;
+sub is_response ($) {
+	die "Pure virtual method is called";
 }
 
 sub is_signed ($) {
