@@ -102,7 +102,7 @@ sub on_command ($$$) {
 	my $connection = shift;
 	my $command = shift;
 
-	my $tid = $command->header->{tid};
+	my $tid = $command->header->tid;
 	my $tree = $tid ? (grep { $_->id == $tid } @{$connection->{trees}})[0] : undef;
 	$command->{tree} = $tree if $tree;
 
@@ -130,13 +130,13 @@ sub on_command ($$$) {
 			# skip command processing
 		}
 		elsif ($command->is('SessionSetup')) {
-			$command->header->{uid} = $connection->id;
+			$command->header->uid($connection->id);
 		}
 		elsif ($command->is('TreeConnect')) {
 			my ($addr, $share) = $self->parse_share_uri($command->verify_uri);
 			my $tree_root = $self->share_roots->{$share};
 			if ($tree_root || $share eq 'IPC$') {
-				my $tid = $command->header->{tid} = @{$connection->{trees}} + 1;
+				my $tid = $command->header->tid(@{$connection->{trees}} + 1);
 				push @{$connection->{trees}}, SMB::Tree->new($share, $tid, root => $tree_root);
 			} else {
 				$error = SMB::STATUS_BAD_NETWORK_NAME;

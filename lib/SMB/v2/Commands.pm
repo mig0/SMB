@@ -156,12 +156,12 @@ sub pack ($$$%) {
 	my $status = $command->status;
 
 	my $is_response = $command->is_response;
-	my $struct_size = $options{struct_size} // $command_struct_sizes[$header->{code}][$is_response] // $header->{struct_size};
+	my $struct_size = $options{struct_size} // $command_struct_sizes[$header->code][$is_response] // $header->struct_size;
 	my $is_chained  = $options{is_chained};
 	my $is_first    = $options{is_first};
 	my $is_last     = $options{is_last};
 
-	my $flags = $header->{flags};
+	my $flags = $header->flags;
 	if ($is_response) {
 		$flags |=  SMB::v2::Header::FLAGS_RESPONSE;
 	} else {
@@ -183,23 +183,23 @@ sub pack ($$$%) {
 	$packer->mark('smb-header');
 	$packer->bytes($header_stamp);  # SMB2 magic signature
 	$packer->uint16(64);            # header size
-	$packer->uint16($header->{credit_charge});
+	$packer->uint16($header->credit_charge);
 	$packer->mark('status');
 	$packer->uint32($is_response ? $status : 0);
-	$packer->uint16($header->{code});
-	$packer->uint16($header->{credits} || 1);
+	$packer->uint16($header->code);
+	$packer->uint16($header->credits || 1);
 	$packer->uint32($flags);
 	$packer->mark('next-command');
 	$packer->uint32(0);
-	$packer->uint64($header->{mid});
+	$packer->uint64($header->mid);
 	# aid or pid + tid
 	if ($flags & SMB::v2::Header::FLAGS_ASYNC_COMMAND) {
-		$packer->uint64($header->{aid});
+		$packer->uint64($header->aid);
 	} else {
 		$packer->uint32(0);  # no pid in SMB2 spec
-		$packer->uint32($header->{tid});
+		$packer->uint32($header->tid);
 	}
-	$packer->uint64($header->{uid});
+	$packer->uint64($header->uid);
 	$packer->bytes("\0" x 16);      # no message signing for now
 
 	$packer->mark('header-end');
