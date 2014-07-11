@@ -24,13 +24,13 @@ use SMB::v2::Header;
 
 sub new ($$%) {
 	my $class = shift;
-	my $header = shift;
+	my $header = shift || '';
 	my %options = @_;
 
 	die "Invalid sub-class $class, should be SMB::v2::Command::*"
 		unless $class =~ /^SMB::v2::Command::(\w+)/;
 
-	die "Invalid header $header, should be isa SMB::v2::Header"
+	die "Invalid header '$header', should be isa SMB::v2::Header"
 		unless $header && $header->isa('SMB::v2::Header');
 
 	my $self = $class->SUPER::new(

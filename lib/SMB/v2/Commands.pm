@@ -44,6 +44,8 @@ our @command_names = (
 	'Break',           # 0x12
 );
 
+our %command_codes = map { $command_names[$_] => $_ } 0 .. $#command_names;
+
 our %command_aliases = (
 	'Echo'    => 'KeepAlive',
 	'Find'    => 'QueryDirectory',
@@ -210,6 +212,7 @@ sub pack ($$$%) {
 	$packer->zero(6 + 1) if $command->is_error && !$command->is('SessionSetup');
 
 	my $payload_allowed = $struct_size % 2;
+	$payload_allowed = 1 if $command->is('Negotiate') && !$is_response;
 	my $size = $packer->diff('header-end');
 	my $size0 = $struct_size & ~1;
 	die "SMB2 command $command->{name} pack produced size $size, expected $size0\n"

@@ -281,6 +281,8 @@ our @command_names = (
 	'',                       # 0xFF
 );
 
+our %command_codes = map { $command_names[$_] => $_ } 0 .. $#command_names;
+
 our $MIN_MESSAGE_SIZE = 33;
 
 sub parse ($$) {

@@ -292,7 +292,7 @@ sub find_files ($%) {
 	my $pattern = $params{pattern} || '*';
 	my $want_all = $pattern eq '*';
 	my $start_idx = $params{start_idx} || 0;
-	my $files = $self->{files};
+	my $files = $self->{files};  # cached
 	my $name = $self->name;
 
 	# fix pattern if needed

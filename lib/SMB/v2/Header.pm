@@ -40,7 +40,7 @@ sub new ($%) {
 	return $class->SUPER::new(
 		aid           => delete $options{aid} || 0,
 		credits       => delete $options{credits} || 0,
-		credit_charge => delete $options{credit_charge} || 0,
+		credit_charge => delete $options{credit_charge} || ($options{code} ? 1 : 0),
 		struct_size   => delete $options{struct_size} || 2,
 		%options,
 	);

@@ -28,6 +28,9 @@ sub new ($$$%) {
 	my $id    = shift || die "No tree id in constructor";
 	my %options = @_;
 
+	$options{addr} //= undef;  # remote
+	$options{root} //= undef;  # local
+
 	my $self = $class->SUPER::new(
 		%options,
 		share => $share,
@@ -43,19 +46,19 @@ sub new ($$$%) {
 sub is_ipc ($) {
 	my $self = shift;
 
-	return $self->{share} eq 'IPC$';
+	return $self->share eq 'IPC$';
 }
 
 sub is_local ($) {
 	my $self = shift;
 
-	return $self->{root} || exists $self->{root} && $self->is_ipc;
+	return $self->root || $self->is_ipc;
 }
 
 sub is_remote ($) {
 	my $self = shift;
 
-	return $self->{addr};
+	return $self->addr;
 }
 
 1;
