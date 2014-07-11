@@ -109,7 +109,7 @@ sub new ($%) {
 	my $filename = undef;
 	if ($root) {
 		die "No share_root directory ($root)" unless -d $root;
-		1 while $root =~ s=(^|/)(?!\.\./)[^/]+/\.\./=$1=;
+		while ($root =~ s=(^|/)(?!\.\./)[^/]+/\.\./=$1=) {}
 		$filename = $name eq '' ? $root : "$root/$name";
 		$filename =~ s!/{2,}!/!g;
 		$filename = '.' if $filename eq '';
