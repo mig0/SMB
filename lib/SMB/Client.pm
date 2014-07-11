@@ -20,7 +20,10 @@ use warnings;
 
 use parent 'SMB::Agent';
 
-use IO::Socket;
+use SMB::v2::Commands;
+use SMB::v2::Command::Negotiate;
+use SMB::v2::Command::SessionSetup;
+use SMB::Tree;
 
 sub new ($$%) {
 	my $class = shift;
@@ -32,8 +35,9 @@ sub new ($$%) {
 
 	my $self = $class->SUPER::new(
 		%options,
-		cwd       => '',
 		server_id => 0,  # running index
+		curr_conn_key => undef,  # key in connections hash
+		unique_conn_addr => 1,
 	);
 
 	$self->connect($share_uri, %options)
@@ -60,26 +64,129 @@ sub connect ($$%) {
 	if ($options{just_socket}) {
 		$self->{socket} = $socket;
 	} else {
-		$self->add_connection(
+		my ($conn_key) = $self->add_connection(
 			$socket, --$self->{server_id},
 			addr     => $addr,
 			share    => $share,
 			username => $options{username},
 			password => $options{password},
 			tree     => undef,
+			cwd      => '',
 			openfiles => {},
+			dialect      => undef,
+			session_id   => 0,
+			message_id   => 0,
+			sent_request => undef,
 		);
+
+		$self->curr_conn_key($conn_key);
 	}
 
 	return $self;
+}
+
+sub get_curr_connection ($) {
+	my $self = shift;
+
+	my $connections = $self->connections;
+	unless (%$connections) {
+		$self->err("Called get_connection when no connections established");
+		return;
+	}
+
+	my $connection = $connections->{$self->curr_conn_key};
+	unless ($connection) {
+		$self->err("Called get_connection when curr_conn_key is invalid");
+		return;
+	}
+
+	return $connection;
+}
+
+sub process_request ($$$%) {
+	my $self = shift;
+	my $connection = shift;
+	my $command_name = shift;
+	my %command_options = @_;
+
+	my $command_class = "SMB::v2::Command::$command_name";
+	my $command_code = $SMB::v2::Commands::command_codes{$command_name};
+
+	my $request = $command_class->new(
+		SMB::v2::Header->new(
+			mid  => $connection->{message_id}++,
+			uid  => $connection->session_id,
+			code => $command_code,
+		),
+	);
+	$request->set(%command_options);
+
+	$connection->send_command($request);
+	$connection->sent_request($request);
+
+	return $self->wait_for_response($connection);;
+}
+
+sub process_negotiate_if_needed ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	return 1 if $connection->dialect;
+
+	my $response = $self->process_request($connection, 'Negotiate');
+	if ($response && $response->is_success) {
+		$connection->dialect($response->dialect);
+		return 1;
+	}
+
+	return 0;
+}
+
+sub process_sessionsetup_if_needed ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	return 1 if $connection->session_id;
+
+	my $response = $self->process_request($connection, 'SessionSetup',
+		security_buffer => "",
+	);
+	return 0 unless $response;
+	$connection->session_id($response->header->uid);
+	return 1 if $response->is_success;
+
+	$response = $self->process_request($connection, 'SessionSetup',
+		security_buffer => "",
+	);
+	if ($response && $response->is_success) {
+		die "Got different session id on second SessionSetup"
+			unless $connection->session_id == $response->header->uid;
+		return 1;
+	}
+
+	return 0;
+}
+
+sub check_session ($$) {
+	my $self = shift;
+	my $connection = shift;
+
+	return
+		$self->process_negotiate_if_needed($connection) &&
+		$self->process_sessionsetup_if_needed($connection);
 }
 
 sub connect_tree ($%) {
 	my $self = shift;
 	my %options = @_;
 
-	my $username = $self->{username} || $options{username} || die "No username to connect\n";
-	my $password = $self->{password} || $options{password} || die "No password to connect\n";
+	my $connection = $self->get_curr_connection || return;
+
+	my ($addr, $share, $username, $password) =
+		map { $connection->{$_} || $options{$_} || die "No $_ to connect_tree\n" }
+		qw(addr share username password);
+
+	return unless $self->check_session($connection);
 
 	return;
 }
@@ -101,7 +208,37 @@ sub chdir ($$) {
 	my $self = shift;
 	my $dir = shift // '';
 
-	$self->{cwd} = $self->normalize_path($dir);
+	$self->cwd($self->normalize_path($dir));
+}
+
+sub on_response ($$$$) {
+	my $self = shift;
+	my $connection = shift;
+	my $response = shift;
+	my $request = shift;
+
+	return 0;
+}
+
+sub wait_for_response ($$) {
+	my $self = shift;
+	my $connection = shift;
+	my $request = $connection->sent_request;
+
+	return unless $request;
+
+	my $response = $connection->recv_command;
+	if (!$response) {
+		$self->delete_connection($connection);
+		return;
+	}
+
+	unless ($response->is_response_to($request)) {
+		$self->err("Unexpected: " . $response->dump);
+		return;
+	}
+
+	return $response;
 }
 
 1;

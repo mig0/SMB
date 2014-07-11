@@ -61,7 +61,7 @@ sub prompt ($;$$) {
 
 	return shift @args if $n_args == -1 && @args;
 
-	my $answer = $term->readline("$message ", '');
+	my $answer = $term->readline("$message: ", '');
 	print $OUT "\n";
 	return unless defined $answer;
 	$answer =~ s/^\s+|\s+$//g;
@@ -88,7 +88,7 @@ my $client = SMB::Client->new(
 	verbose  => $verbose,
 );
 
-my $tree = $client->connect
+my $tree = $client->connect_tree
 	or die "Failed to connect to $share_uri, aborting\n";
 
 my %operations = (
@@ -104,6 +104,14 @@ my %operations = (
 	help => sub {
 		my $help = qq{
 			Operations available:
+
+			connect ADDR  connect to server, ADDR is host[:port]
+			disconnect    disconnect of the current connection
+			tree-connect  connect to share, argument syntax //host[:port]/share
+			tree-disconn  disconnect from the current share
+
+			status        show connections and shares
+			switch [IDX]  change the current tree or connection (see "status")
 
 			cd DIR        change working directory
 			del FILE      remove file
