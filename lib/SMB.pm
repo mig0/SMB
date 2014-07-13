@@ -20,11 +20,6 @@ use integer;
 
 package SMB;
 
-use SMB::Parser;
-use SMB::Packer;
-use SMB::v1::Commands;
-use SMB::v2::Commands;
-
 our $VERSION = 0.001;
 
 use constant {
@@ -65,12 +60,7 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
-	my $parser = delete $options{parser} // SMB::Parser->new;
-	my $packer = delete $options{packer} // SMB::Packer->new;
-
 	my $self = {
-		parser => $parser,
-		packer => $packer,
 		disable_log => $options{quiet},
 		%options,
 	};
@@ -112,20 +102,6 @@ sub mem ($$;$) {
 		printf $dump_line_format, $n;
 	}
 }
-
-sub parse_uint8  { $_[0]->parser->uint8;  }
-sub parse_uint16 { $_[0]->parser->uint16; }
-sub parse_uint32 { $_[0]->parser->uint32; }
-sub parse_bytes  { $_[0]->parser->bytes($_[1]); }
-sub parse_smb1   { SMB::v1::Commands->parse($_[0]->parser) }
-sub parse_smb2   { SMB::v2::Commands->parse($_[0]->parser) }
-
-sub pack_uint8  { $_[0]->packer->uint8($_[1]);  }
-sub pack_uint16 { $_[0]->packer->uint16($_[1]); }
-sub pack_uint32 { $_[0]->packer->uint32($_[1]); }
-sub pack_bytes  { $_[0]->packer->bytes($_[1]); }
-sub pack_smb1   { SMB::v1::Commands->pack(shift()->packer, shift, @_) }
-sub pack_smb2   { SMB::v2::Commands->pack(shift()->packer, shift, @_) }
 
 sub parse_share_uri ($$) {
 	my $self = shift;

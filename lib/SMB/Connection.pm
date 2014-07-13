@@ -22,6 +22,25 @@ use bytes;
 
 use parent 'SMB';
 
+use SMB::Parser;
+use SMB::Packer;
+use SMB::v1::Commands;
+use SMB::v2::Commands;
+
+sub parse_uint8  { $_[0]->parser->uint8;  }
+sub parse_uint16 { $_[0]->parser->uint16; }
+sub parse_uint32 { $_[0]->parser->uint32; }
+sub parse_bytes  { $_[0]->parser->bytes($_[1]); }
+sub parse_smb1   { SMB::v1::Commands->parse($_[0]->parser) }
+sub parse_smb2   { SMB::v2::Commands->parse($_[0]->parser) }
+
+sub pack_uint8  { $_[0]->packer->uint8($_[1]);  }
+sub pack_uint16 { $_[0]->packer->uint16($_[1]); }
+sub pack_uint32 { $_[0]->packer->uint32($_[1]); }
+sub pack_bytes  { $_[0]->packer->bytes($_[1]); }
+sub pack_smb1   { SMB::v1::Commands->pack(shift()->packer, shift, @_) }
+sub pack_smb2   { SMB::v2::Commands->pack(shift()->packer, shift, @_) }
+
 sub new ($$$%) {
 	my $class = shift;
 	my $socket = shift || die "No socket";
@@ -37,6 +56,8 @@ sub new ($$$%) {
 		verbose => $verbose,
 		socket  => $socket,
 		id      => $id,
+		parser  => SMB::Parser->new,
+		packer  => SMB::Packer->new,
 	);
 
 	unless ($self->disable_log) {
