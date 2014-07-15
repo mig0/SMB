@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::v1::Commands;
+
 use strict;
 use warnings;
-
-package SMB::v1::Commands;
 
 use SMB::v1::Header;
 

@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB::File;
+
 use strict;
 use warnings;
-
-package SMB::File;
 
 use parent 'SMB';
 
