@@ -54,16 +54,44 @@ sub init ($) {
 		dialect           => 0x0202,
 		security_mode     => 0,
 		capabilities      => 0x7,
-		client_guid       => [ ("\5") x 16 ],
+		guid              => [ ("\5") x 16 ],
 		max_transact_size => 1 << 20,
 		max_read_size     => 1 << 16,
 		max_write_size    => 1 << 16,
+		current_time      => 0,
+		boot_time         => 0,
+		security_buffer   => undef,
 	)
 }
 
 sub parse ($$%) {
 	my $self = shift;
 	my $parser = shift;
+
+	if ($self->is_response) {
+		$self->security_mode($parser->uint16);
+		$self->dialect($parser->uint16);
+		$parser->uint16;  # reserved
+		$self->guid([ $parser->bytes(16) ]);
+		$self->capabilities($parser->uint32);
+		$self->max_transact_size($parser->uint32);
+		$self->max_read_size($parser->uint32);
+		$self->max_write_size($parser->uint32);
+		$self->current_time($parser->uint64);
+		$self->boot_time($parser->uint64);
+		my $offset = $parser->uint16;
+		my $length = $parser->uint16;
+		$parser->uint32;  # reserved2
+		$self->security_buffer([ $parser->bytes($length) ]);
+	} else {
+		my $num_dialects = $parser->uint16;
+		$self->security_mode($parser->uint16);
+		$parser->uint16;  # reserved
+		$self->capabilities($parser->uint32);
+		$self->guid([ $parser->bytes(16) ]);
+		$self->boot_time($parser->uint64);
+		$self->dialects([ map { $parser->uint16 } 1 .. $num_dialects ]);
+	}
 
 	return $self;
 }
@@ -73,20 +101,20 @@ sub pack ($$) {
 	my $packer = shift;
 
 	if ($self->is_response) {
-		my $security_buffer =
-			"\x60\x28\x06\x06\x2b\x06\x01\x05\x05\x02\xa0\x1e\x30\x1c\xa0\x1a\x30\x18\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x1e\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a";
+		my $security_buffer = $self->security_buffer
+			or $self->abort_pack($packer, SMB::STATUS_INVALID_PARAMETER);
 
 		$packer
 			->uint16($self->security_mode)
 			->uint16($self->dialects->[1] || $self->dialect)
 			->uint16(0)  # reserved
-			->bytes ($self->client_guid)
+			->bytes ($self->guid)
 			->uint32($self->capabilities)
 			->uint32($self->max_transact_size)
 			->uint32($self->max_read_size)
 			->uint32($self->max_write_size)
-			->uint64(0)  # current time
-			->uint64(0)  # boot time
+			->uint64($self->current_time)
+			->uint64($self->boot_time)
 			->uint16($packer->diff('smb-header') + 8)
 			->uint16(length($security_buffer))
 			->uint32(0)  # reserved2
@@ -99,8 +127,8 @@ sub pack ($$) {
 			->uint16($self->security_mode)
 			->uint16(0)  # reserved
 			->uint32($self->capabilities)
-			->bytes ($self->client_guid)
-			->uint64(0)  # boot time
+			->bytes ($self->guid)
+			->uint64($self->boot_time)
 		;
 		$packer->uint16($_) for @$dialects;
 	}
