@@ -21,6 +21,7 @@ use warnings;
 use parent 'SMB';
 
 use SMB::Connection;
+use SMB::Auth;
 use IO::Socket;
 use IO::Select;
 
@@ -68,6 +69,8 @@ sub add_connection ($$$%) {
 
 	my $key = $self->get_connection_key($socket);
 	return $self->connections->{$key} if $self->connections->{$key};
+
+	$options{auth} //= SMB::Auth->new;
 
 	my $connection = SMB::Connection->new(
 		$socket, $id,

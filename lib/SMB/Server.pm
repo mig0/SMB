@@ -129,7 +129,12 @@ sub on_command ($$$) {
 		if ($error) {
 			# skip command processing
 		}
+		elsif ($command->is('Negotiate')) {
+			$command->security_buffer($connection->auth->generate_spnego(is_initial => 1));
+		}
 		elsif ($command->is('SessionSetup')) {
+			$connection->auth->process_spnego($command->security_buffer);
+			$command->security_buffer($connection->auth->generate_spnego);
 			$command->header->uid($connection->id);
 		}
 		elsif ($command->is('TreeConnect')) {

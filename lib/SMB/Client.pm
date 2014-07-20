@@ -135,6 +135,9 @@ sub process_negotiate_if_needed ($$) {
 
 	my $response = $self->process_request($connection, 'Negotiate');
 	if ($response && $response->is_success) {
+		unless ($connection->auth->process_spnego($response->security_buffer)) {
+			$self->err("Server does not support our negotiation mechanism, expect problems on SessionSetup");
+		}
 		$connection->dialect($response->dialect);
 		return 1;
 	}
@@ -149,16 +152,23 @@ sub process_sessionsetup_if_needed ($$) {
 	return 1 if $connection->session_id;
 
 	my $response = $self->process_request($connection, 'SessionSetup',
-		security_buffer => "",
+		security_buffer => $connection->auth->generate_spnego,
 	);
-	return 0 unless $response;
+	my $more_processing = $response->status == SMB::STATUS_MORE_PROCESSING_REQUIRED;
+	return 0
+		unless $response && ($response->is_success || $more_processing)
+		&& $connection->auth->process_spnego($response->security_buffer);
 	$connection->session_id($response->header->uid);
 	return 1 if $response->is_success;
+	return 0 unless $more_processing;
 
 	$response = $self->process_request($connection, 'SessionSetup',
-		security_buffer => "",
+		security_buffer => $connection->auth->generate_spnego(
+			username => $connection->username,
+			password => $connection->password,
+		),
 	);
-	if ($response && $response->is_success) {
+	if ($response && $response->is_success && $connection->auth->process_spnego($response->security_buffer)) {
 		die "Got different session id on second SessionSetup"
 			unless $connection->session_id == $response->header->uid;
 		return 1;

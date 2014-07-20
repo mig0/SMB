@@ -15,6 +15,7 @@ Usage:
 
 Classes:
 	SMB
+	SMB::Auth
 	SMB::Client
 	SMB::Command
 	SMB::Connection
