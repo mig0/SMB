@@ -90,6 +90,15 @@ sub bytes ($$) {
 	return wantarray ? split('', $bytes) : $bytes;
 }
 
+sub skip ($) {
+	my $self = shift;
+	my $n_bytes = shift;
+
+	$self->{offset} += $n_bytes;
+
+	return $self;
+}
+
 sub uint8     { uint($_[0], 1   ); }
 sub uint16    { uint($_[0], 2   ); }
 sub uint32    { uint($_[0], 4   ); }
