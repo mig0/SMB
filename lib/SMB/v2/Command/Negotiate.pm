@@ -116,7 +116,7 @@ sub pack ($$) {
 			->uint64($self->current_time)
 			->uint64($self->boot_time)
 			->uint16($packer->diff('smb-header') + 8)
-			->uint16(length($security_buffer))
+			->uint16(0 + @$security_buffer)
 			->uint32(0)  # reserved2
 			->bytes ($security_buffer)
 		;
