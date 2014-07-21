@@ -151,3 +151,48 @@ sub AUTOLOAD ($;@) {
 }
 
 1;
+
+__END__
+# ----------------------------------------------------------------------------
+
+=head1 NAME
+
+SMB - A humble SMB network protocol implementation in Perl
+
+=head1 SYNOPSIS
+
+	use SMB::Server;
+
+	my $server = SMB::Server->new(port => 10445);
+	$server->run;
+
+
+	use SMB::Client;
+
+	my $client = SMB::Client->new('//10.0.2.2/test',
+		username => 'test',
+		password => 'secret',
+	);
+	my $tree = $client->connect_tree;
+	$tree = $client->connect_tree('/test2');
+
+	for my $file ($tree->find("*.txt")) {
+		printf "%-40s %s\n", $file->name, $file->mtime_string;
+	}
+
+=head1 ABSTRACT
+
+Receive and send SMB commands.  SMB is a network protocol used for
+providing shared access to files.  It stands for Server Message Block,
+also called CIFS - Common Internet File System.
+
+The work is in progress.
+
+=head1 SEE ALSO
+
+http://migo.sixbit.org/software/smb-perl/
+
+=head1 AUTHORS
+
+Mikhael Goikhman <migo@cpan.org>
+
