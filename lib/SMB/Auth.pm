@@ -39,8 +39,8 @@ use constant {
 # Generic Security Service API / Simple Protected Negotiation
 
 use constant {
-	OID_SPNEGO       => [ 43, 6, 1, 5, 5, 2 ],
-	OID_MECH_NTLMSSP => [ 43, 6, 1, 4, 1, 311, 2, 2, 10 ],
+	OID_SPNEGO       => '1.3.6.1.5.5.2',
+	OID_MECH_NTLMSSP => '1.3.6.1.4.1.311.2.2.10',
 
 	SPNEGO_ACCEPT_COMPLETED  => 0,
 	SPNEGO_ACCEPT_INCOMPLETE => 1,
@@ -123,8 +123,15 @@ sub parse_asn1 {
 	if ($tag == ASN1_BINARY) {
 		@contents = (\@bytes);
 	} elsif ($tag == ASN1_OID) {
+		my $idx = 0;
 		my $carry = 0;
-		@contents = ([ map { my @i; if ($_ >= 0x80) { $carry = $carry * 0x80 + $_ - 0x80; } else { @i = ($carry * 0x80 + $_); $carry = 0; } @i } map { ord($_) } @bytes ]);
+		@contents = (join('.', map {
+			my @i;
+			if (0 == $idx++) { @i = (int($_ / 40), $_ % 40); }
+			elsif ($_ >= 0x80) { $carry = $carry * 0x80 + $_ - 0x80; }
+			else { @i = ($carry * 0x80 + $_); $carry = 0; }
+			@i
+		} map { ord($_) } @bytes));
 	} elsif ($tag == ASN1_ENUMERATED) {
 		die "Unsupported len=$len" unless $len == 1;
 		@contents = @bytes;
@@ -149,7 +156,17 @@ sub generate_asn1 {
 	if ($tag == ASN1_BINARY) {
 		@bytes = split('', $content);
 	} elsif ($tag == ASN1_OID) {
-		@bytes = map { chr($_) } map { $_ >= 0x80 ? (0x80 + int($_ / 0x80), $_ % 0x80) : $_ } @$content;
+		my $idx = 0;
+		my $id0;
+		@bytes = map { chr($_) } map {
+			0 == $idx++ ? ($id0 = $_) && () : 2 == $idx ? ($id0 * 40 + $_) : (
+				$_ >= 1 << 28 ? (0x80 | (($_ >> 28) & 0x7f)) : (),
+				$_ >= 1 << 21 ? (0x80 | (($_ >> 21) & 0x7f)) : (),
+				$_ >= 1 << 14 ? (0x80 | (($_ >> 14) & 0x7f)) : (),
+				$_ >= 1 <<  7 ? (0x80 | (($_ >>  7) & 0x7f)) : (),
+				$_ & 0x7f
+			)
+		} split(/\./, $content);
 	} elsif ($tag == ASN1_ENUMERATED) {
 		@bytes = (chr($content));
 	} elsif ($tag == ASN1_SEQUENCE || $tag == ASN1_APPLICATION) {
@@ -190,7 +207,7 @@ sub process_spnego ($$) {
 			unless ref($value) eq 'ARRAY' && shift @$value == ASN1_SEQUENCE;
 		for (@$value) {
 			return $self->ntlmssp_supported(1)
-				if $_->[0] == ASN1_OID && join('.', @{$_->[1]}) eq join('.', @{OID_MECH_NTLMSSP()});
+				if $_->[0] == ASN1_OID && $_->[1] eq OID_MECH_NTLMSSP;
 		}
 		return $self->ntlmssp_supported(0);
 	}
