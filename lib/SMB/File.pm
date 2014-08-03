@@ -25,10 +25,8 @@ use File::Basename qw(basename);
 use File::Glob qw(:bsd_glob);
 use Fcntl qw(:mode O_DIRECTORY O_RDONLY O_RDWR O_CREAT O_EXCL O_TRUNC);
 use POSIX qw(strftime);
-use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
 
-use Exporter 'import';
-our @EXPORT_OK = qw(from_nttime to_nttime);
+use SMB::Time qw(from_nttime to_nttime);
 
 use constant {
 	ATTR_READONLY            => 0x00000001,
@@ -61,21 +59,6 @@ use constant {
 };
 
 use SMB::OpenFile;
-
-my $nttime_factor = 10_000_000;
-my $nttime_offset = 11_644_473_600;
-
-sub from_nttime ($) {
-	my $nttime = shift || return 0;
-
-	return $nttime / $nttime_factor - $nttime_offset;
-}
-
-sub to_nttime ($) {
-	my $time = shift || return 0;
-
-	return ($time + $nttime_offset) * $nttime_factor;
-}
 
 sub from_ntattr ($) {
 	my $attr = shift || return 0;

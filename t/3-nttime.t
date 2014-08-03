@@ -8,7 +8,7 @@ use Time::HiRes qw(time);
 
 use lib '../lib', 'lib';
 
-use_ok('SMB::File', qw(from_nttime to_nttime));
+use_ok('SMB::Time', qw(from_nttime to_nttime));
 
 my $time = time;
 my $nttime = to_nttime($time);
