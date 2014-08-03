@@ -45,7 +45,7 @@ __END__
 
 =head1 NAME
 
-SMB::Time - Functions to convert between unix time and SMB time
+SMB::Time - Functions to convert between UNIX time and SMB time
 
 =head1 SYNOPSIS
 
@@ -59,7 +59,8 @@ SMB::Time - Functions to convert between unix time and SMB time
 
 =head1 ABSTRACT
 
-Time values in L<SMB> use the NTFS time convention. This module converts between NT time and UNIX time.
+Time values in L<SMB> follow the NTFS time convention.
+This module helps to convert between NT time and UNIX time.
 
 NT time is number of 100-nanoseconds since 1601-01-01 00:00:00 UTC.
 
@@ -75,7 +76,7 @@ By default, functions B<from_nttime> and B<to_nttime> are exported using the sta
 
 Returns NT time (64-bit unsigned integer) given UNIX time (32-bit unsigned integer).
 
-=item ti_nttime UNIXTIME
+=item to_nttime UNIXTIME
 
 Returns UNIX time (32-bit unsigned integer) given NT time (64-bit unsigned integer).
 
