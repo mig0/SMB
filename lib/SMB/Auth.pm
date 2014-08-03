@@ -25,8 +25,10 @@ use Digest::MD4 qw(md4);
 use Digest::HMAC_MD5 qw(hmac_md5);
 use Sys::Hostname qw(hostname);
 use Encode qw(encode);
+
 use SMB::Parser;
 use SMB::Packer;
+use SMB::Time qw(to_nttime);
 
 # Abstract Syntax Notation One (small subset)
 
@@ -671,11 +673,10 @@ sub generate_spnego ($%) {
 		my $ntlm_hash = $options{ntlm_password_hash} || create_ntlm_hash($password);
 		my $ntlmv2_hash = create_ntlmv2_hash($ntlm_hash, $self->username, $self->domain);
 
-		my $client_time = [ map { chr($_) } 0x80, 0x2f, 0x63, 0xe0, 0x43, 0x9d, 0xcf, 0x01 ];
 		$self->packer->reset
 			->uint32(0x0101)    # header
 			->uint32(0)         # reserved
-			->bytes($client_time)
+			->uint64(to_nttime(time))
 			->bytes($self->client_challenge)
 			->uint32(0)         # unknown
 			->uint16(NTLMSSP_ITEM_NETBIOSDOMAIN)
@@ -692,7 +693,7 @@ sub generate_spnego ($%) {
 			->str($self->server_dns_host)
 			->uint16(NTLMSSP_ITEM_TIMESTAMP)
 			->uint16(8)
-			->uint64($self->server_timestamp || [ 0, 0 ])
+			->uint64($self->server_timestamp || 0)
 			->uint16(NTLMSSP_ITEM_TERMINATOR)
 			->uint16(0)
 		;
