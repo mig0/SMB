@@ -59,9 +59,10 @@ sub prompt ($;$$) {
 	my $n_args = shift || 0;
 	my $is_secret = shift;
 
-	return shift @args if $n_args == -1 && @args;
+	return shift @args if @args;
 
-	my $answer = $term->readline("$message: ", '');
+	$message .= ': ' unless $message =~ /[:>.]\s*$/;
+	my $answer = $term->readline($message, '');
 	print $OUT "\n";
 	return unless defined $answer;
 	$answer =~ s/^\s+|\s+$//g;
@@ -99,7 +100,9 @@ my %operations = (
 		$tree->remove(prompt("File to remove"));
 	},
 	dir => sub {
-		$tree->find(@args ? shift @args : '*');
+		for my $file (@{$tree->find(@args ? shift @args : '*')}) {
+			printf "%-40s %s\n", $file->name, $file->mtime_string;
+		}
 	},
 	help => sub {
 		my $help = qq{
@@ -117,6 +120,8 @@ my %operations = (
 			del FILE      remove file
 			dir [MASK]    list all or matching files
 			rename F1 F2  rename file
+
+			quit          exit the client (close all connections)
 		};
 		$help =~ s/^\n//; $help =~ s/^\t{2}\t?//mg;
 		print $help;
@@ -127,16 +132,15 @@ my %aliases = (
 	chdir => 'cd',
 	rm => 'del',
 	find => 'dir',
+	exit => 'quit',
 );
 
-print "Connected to $share_uri. Files:\n";
-for my $file (@{$tree->find("*")}) {
-	printf "%-40s %s\n", $file->name, $file->mtime_string;
-}
+print "Connected to $share_uri. Enter 'help' to list commands.\n";
 
 while (1) {
-	my $op = prompt("smb> ", 2);
+	my $op = prompt("smb> ", 2) // last;
 	$op = $aliases{$op} if $aliases{$op};
+	last if $op eq 'quit';
 	my $func = $operations{$op};
 	if ($func) {
 		$func->();

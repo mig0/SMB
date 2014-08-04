@@ -23,6 +23,10 @@ use parent 'SMB::Agent';
 use SMB::v2::Commands;
 use SMB::v2::Command::Negotiate;
 use SMB::v2::Command::SessionSetup;
+use SMB::v2::Command::TreeConnect;
+use SMB::v2::Command::Create;
+use SMB::v2::Command::Close;
+use SMB::v2::Command::QueryDirectory;
 use SMB::Tree;
 
 sub new ($$%) {
@@ -103,6 +107,18 @@ sub get_curr_connection ($) {
 	return $connection;
 }
 
+sub find_connection_by_tree ($$) {
+	my $self = shift;
+	my $tree = shift // die;
+
+	for (values %{$self->connections}) {
+		return $_ if $_->tree == $tree;
+	}
+
+	$self->err("Can't find connection for $tree");
+	return;
+}
+
 sub process_request ($$$%) {
 	my $self = shift;
 	my $connection = shift;
@@ -111,11 +127,13 @@ sub process_request ($$$%) {
 
 	my $command_class = "SMB::v2::Command::$command_name";
 	my $command_code = $SMB::v2::Commands::command_codes{$command_name};
+	my $no_warn = delete $command_options{_no_warn};
 
 	my $request = $command_class->new(
 		SMB::v2::Header->new(
 			mid  => $connection->{message_id}++,
 			uid  => $connection->session_id,
+			tid  => $connection->tree ? $connection->tree->id : 0,
 			code => $command_code,
 		),
 	);
@@ -124,7 +142,12 @@ sub process_request ($$$%) {
 	$connection->send_command($request);
 	$connection->sent_request($request);
 
-	return $self->wait_for_response($connection);;
+	my $response = $self->wait_for_response($connection);
+
+	warn "SMB Error on $command_name response: " . ($response ? sprintf "%x", $response->status : "internal") . "\n"
+		if !$no_warn && (!$response || $response->is_error);
+
+	return $response;
 }
 
 sub process_negotiate_if_needed ($$) {
@@ -153,6 +176,7 @@ sub process_sessionsetup_if_needed ($$) {
 
 	my $response = $self->process_request($connection, 'SessionSetup',
 		security_buffer => $connection->auth->generate_spnego,
+		_no_warn => 1,
 	);
 	my $more_processing = $response->status == SMB::STATUS_MORE_PROCESSING_REQUIRED;
 	return 0
@@ -198,27 +222,73 @@ sub connect_tree ($%) {
 
 	return unless $self->check_session($connection);
 
+	$addr =~ s/:\d+//;
+	my $response = $self->process_request($connection, 'TreeConnect', uri => "\\\\$addr\\$share");
+	if ($response && $response->is_success) {
+		my $tree = SMB::Tree->new(
+			$share, $response->header->tid,
+			addr   => $addr,
+			client => $self,
+			cwd    => '',
+		);
+		$connection->tree($tree);
+		return $tree;
+	}
+
 	return;
 }
 
-sub normalize_path ($$) {
-	my $self = shift;
+sub _normalize_path ($$;$) {
 	my $path = shift // '';
+	my $base = shift // '';
+	my $to_dos = shift || 0;
 
-	$path = "$self->{cwd}/$path" if $path =~ m!^[^/]!;
+	$path = "$base/$path" if $path =~ m!^[^/]!;
 
-	# TODO: strip "subdir/.." parts
-	$path =~ s!/+$!/!g;
+	$path =~ s![/\\]+$!/!g;  # to unix
 	$path =~ s!/$!!;
+	while ($path =~ s=(^|/)(?!\.\./)[^/]+/\.\./=$1=) {}
+
+	if ($to_dos) {
+		$path =~ s=^/==;
+		$path =~ s=/=\\=g;
+	}
 
 	return $path;
 }
 
-sub chdir ($$) {
+sub perform_tree_command ($$$@) {
 	my $self = shift;
-	my $dir = shift // '';
+	my $tree = shift;
+	my $command = shift;
 
-	$self->cwd($self->normalize_path($dir));
+	my $connection = $self->find_connection_by_tree($tree) || return;
+
+	if ($command eq 'chdir') {
+		my $dir = shift // '';
+
+		$tree->cwd(_normalize_path($dir, $tree->cwd));
+	} elsif ($command eq 'find') {
+		my $pattern = _normalize_path(shift || "*", $tree->cwd, 1);
+		my $dirname = $pattern =~ /^(.*[\\])/ ? $1 : "";
+		my $response = $self->process_request($connection, 'Create',
+			file_name => $dirname,
+			file_attributes => SMB::File::ATTR_DIRECTORY,
+		);
+		return unless $response && $response->is_success;
+		my $fid = $response->fid;
+		$response = $self->process_request($connection, 'QueryDirectory',
+			file_pattern => $pattern,
+			fid => $fid,
+		);
+		my $files = $response && $response->is_success ? $response->files : undef;
+		$self->process_request($connection, 'Close',
+			fid => $fid,
+		);
+		return $files;
+	}
+
+	return;
 }
 
 sub on_response ($$$$) {

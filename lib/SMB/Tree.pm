@@ -58,7 +58,22 @@ sub is_local ($) {
 sub is_remote ($) {
 	my $self = shift;
 
-	return $self->addr;
+	return $self->addr && $self->client;
 }
+
+sub perform_remote_command ($$@) {
+	my $self = shift;
+	my $command = shift;
+
+	die unless $self->is_remote;
+
+	$self->client->perform_tree_command($self, $command, @_);
+}
+
+sub chdir  { shift()->perform_remote_command('chdir',  @_); }
+sub find   { shift()->perform_remote_command('find',   @_); }
+sub copy   { shift()->perform_remote_command('copy',   @_); }
+sub rename { shift()->perform_remote_command('rename', @_); }
+sub remove { shift()->perform_remote_command('remove', @_); }
 
 1;
