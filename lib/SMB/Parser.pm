@@ -51,6 +51,7 @@ sub set ($$;$) {
 
 sub data { $_[0]->{data} }
 sub size { $_[0]->{size} }
+sub offset { $_[0]->{offset} }
 
 my %UINT_MODS = (
 	+1 => 'C',
