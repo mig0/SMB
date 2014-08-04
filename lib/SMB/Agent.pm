@@ -94,4 +94,18 @@ sub delete_connection ($$) {
 	$connection->close;
 }
 
+sub delete_all_connections ($$) {
+	my $self = shift;
+
+	for (values %{$self->connections}) {
+		$self->delete_connection($_);
+	}
+}
+
+sub DESTROY ($) {
+	my $self = shift;
+
+	$self->delete_all_connections;
+}
+
 1;
