@@ -119,6 +119,140 @@ sub parse_share_uri ($$) {
 	return wantarray ? ($2, $3) : $share_uri;
 }
 
+our %dump_seen;
+our $dump_is_newline = 1;
+our $dump_level_limit = 7;
+our $dump_array_limit = 20;
+our $dump_string_limit = 50;
+
+sub _dump_prefix ($) {
+	my $level = shift;
+
+	return "" unless $dump_is_newline;
+	$dump_is_newline = 0;
+
+	return " " x (4 * $level);
+}
+
+sub _dump_eol () {
+   $dump_is_newline = 1;
+
+   return "\n";
+}
+
+sub _dump_string ($) {
+	my $value = shift;
+
+	my $len = length($value);
+	if ($len > $dump_string_limit) {
+		my $llen = length($len);
+		substr($value, $dump_string_limit - 3 - $llen) =
+			"..+" . ($len - $dump_string_limit + 3 + $llen);
+	}
+
+	$value =~ s/([\\"])/\\$1/g;
+	$value =~ s/([^\\" -\x7e])/sprintf("\\x%02x", ord($1))/ge;
+
+	return $value;
+}
+
+sub _dump_value ($) {
+	my $value = shift;
+	my $level  = shift || 0;
+	my $inline = shift || 0;
+
+	return '' if $level >= $dump_level_limit;
+
+	my $type = ref($value);
+	my $dump = _dump_prefix($level);
+	my $is_seen = $type && $dump_seen{$value};
+	$dump_seen{$value} = 1 if $type;
+
+	if (! $type) {
+		$dump .= defined $value
+			? $value =~ /^-?\d+$/ ||$inline == 2 && $value =~ /^-?\w+$/
+				? $value : '"' . _dump_string($value) . '"'
+			: 'undef';
+	} elsif ($type eq 'ARRAY') {
+		if ($is_seen) {
+			$dump .= "ARRAY (seen)";
+		} else {
+			$dump .= "[" . _dump_eol();
+			my @array = @$value > $dump_array_limit ? (@$value)[0 .. $dump_array_limit - 2] : @$value;
+			foreach (@array) {
+				$dump .= _dump_prefix($level + 1);
+				$dump .= &_dump_value($_, $level + 1, 1);
+				$dump .= "," . _dump_eol();
+			}
+			if (@$value > $dump_array_limit) {
+				$dump .= _dump_prefix($level + 1);
+				$dump .= "...[+" . (@$value - $dump_array_limit + 1) . "]," . _dump_eol();
+			}
+			$dump .= _dump_prefix($level) . "]";
+		}
+	} elsif ($type eq 'HASH') {
+		if ($is_seen) {
+			$dump .= "HASH (seen)";
+		} else {
+			$dump .= "{" . _dump_eol();
+			my $idx = 0;
+			my @keys = sort keys %$value;
+			my $size = @keys;
+			foreach my $key (@keys) {
+				my $val = $value->{$key};
+				last if ++$idx == $dump_array_limit && $size > $dump_array_limit;
+				$dump .= _dump_prefix($level + 1);
+				$dump .= &_dump_value($key, $level + 1, 2);
+				$dump .= " => ";
+				$dump .= &_dump_value($val, $level + 1, 1);
+				$dump .= "," . _dump_eol();
+			}
+			if ($size > $dump_array_limit) {
+				$dump .= _dump_prefix($level + 1);
+				$dump .= "...[+" . ($size - $dump_array_limit + 1) . "]," . _dump_eol();
+			}
+			$dump .= _dump_prefix($level) . "}";
+		}
+	} elsif ($type eq 'REF') {
+		$dump .= "REF";
+	} elsif ($type eq 'CODE') {
+		$dump .= "CODE";
+	} elsif ($type eq 'GLOB') {
+		$dump .= "GLOB";
+	} elsif ($type eq 'SCALAR') {
+		$dump .= "\\";
+		$dump .= &_dump_value($$value, $level + 1, 1);
+	} else {
+		$dump .= "$type ";
+		my $native_type;
+		foreach ('SCALAR', 'ARRAY', 'HASH', 'CODE', 'GLOB') {
+			$native_type = $_ if $value->isa($_);
+		}
+		die "Non-standard perl ref type to dump in $value\n" unless $native_type;
+
+		$dump_seen{$value} = 0;
+		bless($value, $native_type);
+		$dump .= &_dump_value($value, $level, 1);
+		bless($value, $type);
+	}
+
+	$dump .= _dump_eol() unless $inline;
+
+	return $dump;
+
+}
+
+sub dump ($;$) {
+	my $self = shift;
+	my $level = 0;
+
+	my $dump = _dump_value($self);
+
+	%dump_seen = ();
+
+	return $dump;
+}
+
 our $AUTOLOAD;
 
 sub AUTOLOAD ($;@) {
@@ -192,7 +326,7 @@ The work is in progress.
 
 http://migo.sixbit.org/software/smb-perl/
 
-=head1 AUTHORS
+=head1 AUTHOR
 
 Mikhael Goikhman <migo@cpan.org>
 
