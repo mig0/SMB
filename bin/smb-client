@@ -92,17 +92,34 @@ my $client = SMB::Client->new(
 my $tree = $client->connect_tree
 	or die "Failed to connect to $share_uri, aborting\n";
 
-my %operations = (
+sub check_tree() {
+	return 1 if $tree;
+	print "No current working tree\n";
+	return 0;
+}
+
+my %commands = (
 	cd => sub {
+		return unless check_tree();
 		$tree->chdir(prompt("Directory to change to"));
 	},
-	del => sub {
-		$tree->remove(prompt("File to remove"));
-	},
 	dir => sub {
-		for my $file (@{$tree->find(@args ? shift @args : '*')}) {
+		return unless check_tree();
+		for my $file (@{$tree->find(@args ? shift @args : '*') || []}) {
 			printf "%-40s %s\n", $file->name, $file->mtime_string;
 		}
+	},
+	copy => sub {
+		return unless check_tree();
+		$tree->copy(prompt("File to copy"), prompt("New file name"));
+	},
+	rename => sub {
+		return unless check_tree();
+		$tree->rename(prompt("File to rename"), prompt("New file name"));
+	},
+	del => sub {
+		return unless check_tree();
+		$tree->remove(prompt("File to remove"));
 	},
 	help => sub {
 		my $help = qq{
@@ -138,14 +155,14 @@ my %aliases = (
 print "Connected to $share_uri. Enter 'help' to list commands.\n";
 
 while (1) {
-	my $op = prompt("smb> ", 2) // last;
-	$op = $aliases{$op} if $aliases{$op};
-	last if $op eq 'quit';
-	my $func = $operations{$op};
+	my $cmd = prompt("smb> ", 2) // last;
+	$cmd = $aliases{$cmd} if $aliases{$cmd};
+	last if $cmd eq 'quit';
+	my $func = $commands{$cmd};
 	if ($func) {
 		$func->();
 	} else {
-		print "Invalid operation, try 'help'\n";
+		print "Invalid command, try 'help'\n";
 	}
 }
 
