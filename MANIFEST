@@ -20,6 +20,7 @@ lib/SMB/Packer.pm
 lib/SMB/Parser.pm
 lib/SMB/Proxy.pm
 lib/SMB/Server.pm
+lib/SMB/Time.pm
 lib/SMB/Tree.pm
 lib/SMB/v1/Command.pm
 lib/SMB/v1/Command/Negotiate.pm

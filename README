@@ -26,6 +26,7 @@ Classes:
 	SMB::Parser
 	SMB::Proxy
 	SMB::Server
+	SMB::Time
 	SMB::Tree
 	SMB::v1::Command
 	SMB::v1::Command::*
@@ -37,7 +38,7 @@ Classes:
 	SMB::v2::Header
 
 Author:
-	Mikhael Goikhman <migo@freeshell.org>
+	Mikhael Goikhman <migo@cpan.org>
 
 Web site:
 	http://migo.sixbit.org/software/perl-smb/
