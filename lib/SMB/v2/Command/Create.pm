@@ -47,12 +47,12 @@ sub init ($) {
 	$_[0]->set(
 		security_flags  => 0,
 		oplock          => 0,
-		impersonation   => 0,
+		impersonation   => 2,
 		create_flags    => 0,
-		access_mask     => 0,
+		access_mask     => 0x81,
 		file_attributes => 0,
-		share_access    => 0,
-		disposition     => 0,
+		share_access    => 3,
+		disposition     => 1,
 		options         => 0,
 		file_name       => '',
 
@@ -67,7 +67,7 @@ sub parse ($$) {
 	my $parser = shift;
 
 	if ($self->is_response) {
-		my $file = SMB::File->new;
+		my $file = SMB::File->new(name => $self->file_name);
 
 		$self->oplock($parser->uint8);
 		$self->flags($parser->uint8);
@@ -147,11 +147,12 @@ sub pack ($$) {
 			->uint32($self->share_access)
 			->uint32($self->disposition)
 			->uint32($self->options)
-			->uint16($packer->diff('smb-header') + 10)
+			->uint16($packer->diff('smb-header') + 12)
 			->uint16(length($self->file_name) * 2)
 			->uint32(0)  # contexts
 			->uint32(0)
 			->utf16($self->file_name)
+			->uint8(0)
 		;
 	}
 }
