@@ -166,7 +166,7 @@ sub pack ($$) {
 			->uint32($self->file_index)
 			->fid2($self->fid || die "No fid set")
 			->uint16($packer->diff('smb-header') + 8)
-			->uint16(length($self->file_pattern))
+			->uint16(length($self->file_pattern) * 2)
 			->uint32($self->buffer_length)
 			->utf16($self->file_pattern)
 		;
