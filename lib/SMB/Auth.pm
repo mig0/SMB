@@ -237,9 +237,10 @@ sub generate_asn1 {
 	return [ (map { chr($_) } $tag, @len_bytes), @bytes ];
 }
 
-sub process_spnego ($$) {
+sub process_spnego ($$%) {
 	my $self = shift;
 	my $bytes = shift || return;
+	my %options = @_;
 
 	return unless @$bytes > 2;
 
@@ -247,7 +248,7 @@ sub process_spnego ($$) {
 	my $struct = parse_asn1($bytes);
 	return unless $struct;
 
-	if (!defined $self->ntlmssp_supported) {
+	if (!defined $self->ntlmssp_supported || $options{is_initial}) {
 		my $value = $parsed_context_values[0];
 		return $self->err("No expected spnego context value")
 			unless ref($value) eq 'ARRAY' && shift @$value == ASN1_SEQUENCE;
@@ -279,8 +280,8 @@ sub process_spnego ($$) {
 		my $off1 = $parser->skip(2)->uint32;
 		my $len2 = $parser->uint16;
 		my $off2 = $parser->skip(2)->uint32;
-		$self->client_domain($parser->reset($off1)->str($len1));
-		$self->client_host  ($parser->reset($off2)->str($len2));
+		$self->client_domain(scalar $parser->reset($off1)->bytes($len1));
+		$self->client_host  (scalar $parser->reset($off2)->bytes($len2));
 	} elsif (!defined $self->server_challenge) {
 		return $self->err("No expected NTLMSSP_CHALLENGE")
 			unless $parser->uint32 == NTLMSSP_CHALLENGE;
