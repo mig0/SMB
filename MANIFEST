@@ -37,6 +37,9 @@ lib/SMB/v2/Command/SessionSetup.pm
 lib/SMB/v2/Command/TreeConnect.pm
 lib/SMB/v2/Commands.pm
 lib/SMB/v2/Header.pm
+shares/test/file1.txt
+shares/test/file2.txt
+shares/test/subdir/.gitignore
 t/0-use.t
 t/1-parser.t
 t/2-packer.t
