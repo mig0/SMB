@@ -13,6 +13,7 @@ lib/SMB/Auth.pm
 lib/SMB/Client.pm
 lib/SMB/Command.pm
 lib/SMB/Connection.pm
+lib/SMB/Crypt.pm
 lib/SMB/File.pm
 lib/SMB/Header.pm
 lib/SMB/OpenFile.pm

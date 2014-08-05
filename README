@@ -19,6 +19,7 @@ Classes:
 	SMB::Client
 	SMB::Command
 	SMB::Connection
+	SMB::Crypt
 	SMB::File
 	SMB::Header
 	SMB::OpenFile
