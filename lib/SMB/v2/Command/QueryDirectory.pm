@@ -66,8 +66,9 @@ sub parse ($$) {
 			my $ea_size = $parser->uint32;  # TODO
 			my $short_length = $parser->uint8;
 			$parser->uint8;
-			my $short_filename = $parser->utf16($short_length);
-			$parser->uint16;  # pad
+			my $short_filename = $parser->utf16(26);
+			substr($short_filename, $short_length) = ''
+				if $short_length < length($short_filename);
 			my $id = $parser->uint64;
 			my $filename = $parser->utf16($length);
 			my $file = SMB::File->new(index => $file_index, name => $filename, short_name => $short_filename, id => $id);
