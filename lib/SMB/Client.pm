@@ -34,8 +34,8 @@ sub new ($$%) {
 	my $share_uri = shift;
 	my %options = @_;
 
-	my $quiet   = delete $options{quiet}   || 0;
 	my $verbose = delete $options{verbose} || 0;
+	$options{quiet} = 1 unless $verbose;
 
 	my $self = $class->SUPER::new(
 		%options,
@@ -270,7 +270,8 @@ sub perform_tree_command ($$$@) {
 		$tree->cwd(_normalize_path($dir, $tree->cwd));
 	} elsif ($command eq 'find') {
 		my $pattern = _normalize_path(shift || "*", $tree->cwd, 1);
-		my $dirname = $pattern =~ /^(.*[\\])/ ? $1 : "";
+		my $dirname = $pattern =~ /^(.*)\\(.*)/ ? $1 : "";
+		$pattern = $2 if $2;
 		my $response = $self->process_request($connection, 'Create',
 			file_name => $dirname,
 			file_attributes => SMB::File::ATTR_DIRECTORY,
