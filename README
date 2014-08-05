@@ -1,15 +1,17 @@
+Welcome to SMB-Perl 0.020.
+
 This pure perl library allows to receive and send commands using SMB
 network protocol (also called CIFS - Common Internet File System).
 
 Currently the intention is to support SMB protocol version 2.
 Support for SMB 1 and SMB 3 may be added in the future.
 
-A simple implementation of SMB server, client and proxy is included.
+Simple implementations of SMB server, client and proxy are included.
 
 Usage:
 	bin/smb-server -p 10445
 
-	bin/smb-client -U username%password //server/share
+	bin/smb-client -v -U username%password //server/share
 
 	bin/smb-proxy -p 10445 10.0.2.2:445
 

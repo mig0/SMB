@@ -20,7 +20,7 @@ use integer;
 
 package SMB;
 
-our $VERSION = 0.001;
+our $VERSION = 0.020;
 
 use constant {
 	STATUS_SUCCESS                  => 0x00000000,
