@@ -1,4 +1,4 @@
-# Games::Checkers, Copyright (C) 2014 Mikhael Goikhman, migo@cpan.org
+# SMB-Perl library, Copyright (C) 2014 Mikhael Goikhman, migo@cpan.org
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,12 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+package SMB;
+
 use strict;
 use warnings;
-
-use integer;
-
-package SMB;
 
 our $VERSION = 0.020;
 
@@ -61,7 +59,7 @@ sub new ($%) {
 	my %options = @_;
 
 	my $self = {
-		disable_log => $options{quiet},
+		disable_log => $options{quiet} ? 1 : 0,
 		%options,
 	};
 
@@ -135,9 +133,9 @@ sub _dump_prefix ($) {
 }
 
 sub _dump_eol () {
-   $dump_is_newline = 1;
+	$dump_is_newline = 1;
 
-   return "\n";
+	return "\n";
 }
 
 sub _dump_string ($) {
@@ -179,9 +177,16 @@ sub _dump_value ($) {
 		} else {
 			$dump .= "[" . _dump_eol();
 			my @array = @$value > $dump_array_limit ? (@$value)[0 .. $dump_array_limit - 2] : @$value;
+			my $prev_elem = '';
 			foreach (@array) {
+				# compress equal consecutive elements
+				my $elem = &_dump_value($_, $level + 1, 1);
+				if ($elem eq $prev_elem) {
+					$dump =~ s/^(\s+)(?:\()?(.*?)(?:\) x (\d+))?,$(\n)\z/my $c = ($3 || 1) + 1; "$1($2) x $c," . _dump_eol()/me;
+					next;
+				}
 				$dump .= _dump_prefix($level + 1);
-				$dump .= &_dump_value($_, $level + 1, 1);
+				$dump .= $prev_elem = $elem;
 				$dump .= "," . _dump_eol();
 			}
 			if (@$value > $dump_array_limit) {
