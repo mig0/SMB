@@ -286,7 +286,7 @@ sub perform_tree_command ($$$@) {
 		$self->process_request($connection, 'Close',
 			fid => $fid,
 		);
-		return $files;
+		return wantarray ? @$files : $files;
 	}
 
 	return;
