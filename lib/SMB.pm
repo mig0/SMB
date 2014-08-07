@@ -321,11 +321,125 @@ SMB - A humble SMB network protocol implementation in Perl
 
 =head1 ABSTRACT
 
-Receive and send SMB commands.  SMB is a network protocol used for
-providing shared access to files.  It stands for Server Message Block,
-also called CIFS - Common Internet File System.
+SMB is a network protocol created by Microsoft used to provide shared
+access to files. It stands for Server Message Block, also called CIFS -
+Common Internet File System.
 
-The work is in progress.
+This SMB framework in written in pure perl. It allows to receive and send
+SMB commands, implements authentication protocols used in SMB, provides
+an object model to conveniently work with local and remote files, trees
+and more. Some basic SMB server and client functionality is available.
+
+The main purpose of this framework is to simplify creation of automatic
+tools for serving and fetching files using SMB protocol and for testing
+existing SMB server and client implementations.
+
+=head1 DESCRIPTION
+
+SMB is a base class for many SMB::* classes.
+
+It provides a common logging and debugging functionality and some sugar,
+like auto-created getter and setter methods for all object fields.
+It also defines some core SMB protocol constants, like status codes.
+
+=head1 METHODS
+
+=over 4
+
+=item new [FIELDS]
+
+Class constructor. Creates an instance of the concrete class and
+initilizes it from FIELDS hash.
+
+The sub-classes may omit a constructor, then this one is used, or they
+may overload it and call $class->SUPER::new(%options) to obtain the newly
+created object.
+
+=item log IS_ERROR FORMAT [ARGS]
+
+This method is used for logging. The message is composed by "sprintf"
+FORMAT and ARGS, and is by default written to standard output.
+
+The logging is enabled by default, unless (quiet => 1) is passed in
+constructor.
+
+The error messages (IS_ERROR=1) are prefixed with "! ", the normal
+messages are prefixed with "* ".
+
+=item msg FORMAT [ARGS]
+
+The same as B<log> with IS_ERROR=0.
+
+=item err FORMAT [ARGS]
+
+The same as B<log> with IS_ERROR=1.
+
+=item mem BUFFER [LABEL]
+
+If the logging is enabled, logs a message containg LABEL and BUFFER size
+in bytes and then a nice memory dump, looking like:
+
+ * NBSS + SMB Negotiate Request (216 bytes):
+ 000 | 00 00 00 d4 ff 53 4d 42  72 00 00 00 00 18 43 c8 | ___..SMB r____.C. |
+ 001 | 00 00 00 00 00 00 00 00  00 00 00 00 00 00 fe ff | ________ ______.. |
+ 002 | 00 00 00 00 00 b1 00 02  50 43 20 4e 45 54 57 4f | _____._. PC NETWO |
+ 003 | 52 4b 20 50 52 4f 47 52  41 4d 20 31 2e 30 00 02 | RK PROGR AM 1.0_. |
+ 004 | 4d 49 43 52 4f 53 4f 46  54 20 4e 45 54 57 4f 52 | MICROSOF T NETWOR |
+ 005 | 4b 53 20 31 2e 30 33 00  02 4d 49 43 52 4f 53 4f | KS 1.03_ .MICROSO |
+ 006 | 46 54 20 4e 45 54 57 4f  52 4b 53 20 33 2e 30 00 | FT NETWO RKS 3.0_ |
+ 007 | 02 4c 41 4e 4d 41 4e 31  2e 30 00 02 4c 4d 31 2e | .LANMAN1 .0_.LM1. |
+ 008 | 32 58 30 30 32 00 02 44  4f 53 20 4c 41 4e 4d 41 | 2X002_.D OS LANMA |
+ 009 | 4e 32 2e 31 00 02 4c 41  4e 4d 41 4e 32 2e 31 00 | N2.1_.LA NMAN2.1_ |
+ 00a | 02 53 61 6d 62 61 00 02  4e 54 20 4c 41 4e 4d 41 | .Samba_. NT LANMA |
+ 00b | 4e 20 31 2e 30 00 02 4e  54 20 4c 4d 20 30 2e 31 | N 1.0_.N T LM 0.1 |
+ 00c | 32 00 02 53 4d 42 20 32  2e 30 30 32 00 02 53 4d | 2_.SMB 2 .002_.SM |
+ 00d | 42 20 32 2e 3f 3f 3f 00                          | B 2.???_          |
+
+=item dump
+
+Returns a neat object's presentation as a multi-line string, like:
+
+ SMB::v2::Command::Close {
+     disable_log => 0,
+     fid => [
+         2,
+         0,
+     ],
+     flags => 0,
+     header => SMB::v2::Header {
+         aid => 0,
+         code => 6,
+         credit_charge => 1,
+         credits => 7802,
+         disable_log => 0,
+         flags => 0,
+         mid => 15,
+         signature => [
+             ("\x00") x 16,
+         ],
+         status => 0,
+         struct_size => 24,
+         tid => 2,
+         uid => 1,
+     },
+     name => "Close",
+     openfile => undef,
+     smb => 2,
+ }
+
+The returned string looks mostly as a valid perl with a minimal overhead.
+Huge arrays, hashes and strings are neatly cut with some info preserved
+about what was omitted.
+
+=item FIELD
+
+=item FIELD NEW_VALUE
+
+For each field in the object, the method of this name is auto-create on
+demand. This method returns the field value if there are no arguments
+(getter) and sets NEW_VALUE if there is a single argument (setter).
+
+=back
 
 =head1 SEE ALSO
 
