@@ -71,8 +71,8 @@ sub stub ($$$) {
 	my $name = shift // '';
 	my $type = shift // '';
 
-	die "type must be either bytes with size or uint{8,16,32,64}"
-		unless $type =~ /^uint(8|16|32|64)$/ || $type =~ /^\d+$/;
+	die "type must be either size of bytes or uint{8,16{,_be},32{,_be},64}"
+		unless $type =~ /^uint(8|16(_be)?|32(_be)?|64)$/ || $type =~ /^\d+$/;
 	$self->{stubs}{$name} = [ $self->{offset}, $type ];
 
 	$type =~ /^\d+$/
@@ -88,7 +88,7 @@ sub fill ($$) {
 	my $data = shift // die;
 
 	my $curr_offset = $self->{offset};
-	my ($offset, $type) = @{$self->{stubs}{$name}};
+	my ($offset, $type) = @{$self->{stubs}{$name} || die "No previously set stub '$name'"};
 	$self->{offset} = $offset;
 	$type =~ /^\d+$/
 		? $self->bytes($data)
