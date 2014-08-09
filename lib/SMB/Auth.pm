@@ -233,7 +233,7 @@ sub parse_asn1 {
 		my $factor = 1;
 		$len = 0;
 		for (1 .. $llen) {
-			$len += $factor * ord(shift @$bytes);
+			$len = $len * $factor + ord(shift @$bytes);
 			$factor *= 256;
 		}
 	}
