@@ -258,7 +258,7 @@ sub parse_asn1 {
 	} elsif ($tag == ASN1_SEQUENCE || $tag == ASN1_APPLICATION) {
 		push @contents, parse_asn1(\@bytes)
 			while @bytes;
-	} elsif ($tag >= ASN1_CONTEXT && $tag <= ASN1_CONTEXT + 2) {
+	} elsif ($tag >= ASN1_CONTEXT && $tag <= ASN1_CONTEXT + 3) {
 		@contents = @{parse_asn1(\@bytes)};
 		$parsed_context_values[$tag - ASN1_CONTEXT] //= \@contents;
 	} else {
@@ -294,7 +294,7 @@ sub generate_asn1 {
 			push @bytes, @{generate_asn1(@$content)};
 			$content = shift;
 		} while $content;
-	} elsif ($tag >= ASN1_CONTEXT && $tag <= ASN1_CONTEXT + 2) {
+	} elsif ($tag >= ASN1_CONTEXT && $tag <= ASN1_CONTEXT + 3) {
 		@bytes = @{generate_asn1($content, @_)};
 	} else {
 		warn sprintf "Unsupported asn1 tag 0x%x on generate\n", $tag;
