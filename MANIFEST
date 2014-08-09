@@ -7,6 +7,7 @@ TODO
 bin/smb-client
 bin/smb-proxy
 bin/smb-server
+conf/passwd.txt
 lib/SMB.pm
 lib/SMB/Agent.pm
 lib/SMB/Auth.pm
