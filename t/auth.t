@@ -9,8 +9,13 @@ use lib '../lib', 'lib';
 
 use_ok('SMB::Auth');
 
+my $username = 'hacker';
+my $password = '3A$y';
+
 my $server_auth = SMB::Auth->new;
 my $client_auth = SMB::Auth->new;
+
+$server_auth->user_passwords({ $username => $password });
 my ($name, $buffer);
 
 $name = "Negotiate Response 1";
@@ -42,7 +47,7 @@ is($server_auth->server_host, 'server', "sanity on server after $name");
 is($client_auth->server_host, 'server', "sanity on client after $name");
 
 $name = "SessionSetup Request 2";
-$buffer = $client_auth->generate_spnego(username => 'hacker', password => 'easy', domain => 'galaxy');
+$buffer = $client_auth->generate_spnego(username => $username, password => $password, domain => 'galaxy');
 ok($buffer, "generate buffer for $name");
 ok($server_auth->process_spnego($buffer), "process buffer from $name");
 ok($client_auth->client_challenge, "sanity on client after $name");

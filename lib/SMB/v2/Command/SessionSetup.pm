@@ -58,7 +58,7 @@ sub prepare_response ($) {
 
 	$self->SUPER::prepare_response;
 
-	my $more_processing = $self->header->mid == 2;
+	my $more_processing = $self->security_buffer && length($self->security_buffer) > 70;
 
 	$self->set_status(SMB::STATUS_MORE_PROCESSING_REQUIRED) if $more_processing;
 
@@ -69,9 +69,12 @@ sub pack ($$) {
 	my $self = shift;
 	my $packer = shift;
 
-	my $security_buffer = $self->security_buffer // die "No security_buffer";
+	my $security_buffer = $self->security_buffer;
 
 	if ($self->is_response) {
+		$security_buffer
+			or return $self->abort_pack($packer, SMB::STATUS_LOGON_FAILURE);
+
 		$packer
 			->uint16(0)  # session flags
 			->uint16($packer->diff('smb-header') + 4)
@@ -79,6 +82,9 @@ sub pack ($$) {
 			->bytes ($security_buffer)
 		;
 	} else {
+		$security_buffer
+			or die "No security_buffer";
+
 		$packer
 			->uint8 ($self->flags)
 			->uint8 ($self->security_mode)
