@@ -22,7 +22,7 @@ use parent 'SMB';
 
 use Time::HiRes qw(stat);
 use File::Basename qw(basename);
-use File::Glob qw(:bsd_glob);
+use File::Glob qw(bsd_glob GLOB_NOCASE GLOB_BRACE);
 use Fcntl qw(:mode O_DIRECTORY O_RDONLY O_RDWR O_CREAT O_EXCL O_TRUNC);
 use POSIX qw(strftime);
 
@@ -88,7 +88,7 @@ sub new ($%) {
 	$name =~ s!\\!\/!g;
 	$name =~ s!/{2,}!/!g;
 	$name =~ s!/$!!;
-	my $root = $options{share_root};
+	my $root = $options{share_root} //= undef;
 	my $filename = undef;
 	if ($root) {
 		die "No share_root directory ($root)" unless -d $root;
@@ -106,7 +106,7 @@ sub new ($%) {
 		last_access_time => @stat ? to_nttime($stat[ 8])  : 0,
 		last_write_time  => @stat ? to_nttime($stat[ 9])  : 0,
 		change_time      => @stat ? to_nttime($stat[ 9])  : 0,
-		allocation_size  => @stat ? $stat[11] * $stat[12] : 0,
+		allocation_size  => @stat ? $stat[12] * 512       : 0,
 		end_of_file      => @stat ? $stat[ 7]             : 0,
 		attributes       => @stat ? to_ntattr($stat[ 2])  : 0,
 		exists           => @stat ? 1 : 0,
