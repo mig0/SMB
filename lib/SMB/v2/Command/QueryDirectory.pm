@@ -74,7 +74,7 @@ sub parse ($$) {
 			my $file = SMB::File->new(index => $file_index, name => $filename, short_name => $short_filename, id => $id);
 			$file->update(@values, 1);
 			push @files, $file;
-			$parser->bytes($current + $next_diff - $parser->offset) if $next_diff;
+			$parser->skip($current + $next_diff - $parser->offset) if $next_diff;
 		} while $next_diff;
 
 		$self->files(\@files);
