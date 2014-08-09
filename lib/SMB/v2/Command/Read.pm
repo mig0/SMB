@@ -52,7 +52,7 @@ sub parse ($$) {
 		my $length = $parser->uint32;  # update self->length?
 		$self->remaining_bytes($parser->uint32);
 		$parser->uint32;  # reserved
-		$self->buffer(scalar $parser->bytes($length));
+		$self->buffer($parser->bytes($length));
 	} else {
 		$parser->uint8;   # padding
 		$self->flags($parser->uint8);
@@ -75,12 +75,14 @@ sub pack ($$) {
 	my $packer = shift;
 
 	if ($self->is_response) {
+		my $buffer = $self->buffer // die "No buffer";
+
 		$packer
 			->uint8($packer->diff('smb-header') + 14)
-			->uint32(length($self->buffer))
+			->uint32(length $buffer)
 			->uint32($self->remaining_bytes)
 			->uint32(0)  # reserved
-			->bytes ($self->buffer)
+			->bytes ($buffer)
 		;
 	} else {
 		$packer

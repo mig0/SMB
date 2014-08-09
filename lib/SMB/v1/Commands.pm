@@ -300,7 +300,7 @@ sub parse ($$) {
 	my $flags  = $parser->uint8;
 	my $flags2 = $parser->uint16;
 	my $pid_h  = $parser->uint16;
-	my @sign   = $parser->bytes(8);
+	my $sign   = $parser->bytes(8);
 	my $tid    = $parser->uint16;
 	my $pid_l  = $parser->uint16;
 	my $uid    = $parser->uint16;
@@ -312,7 +312,7 @@ sub parse ($$) {
 		uid       => $uid,
 		tid       => $tid,
 		mid       => $mid,
-		signature => \@sign,
+		signature => $sign,
 		pid       => $pid_h << 16 + $pid_l,
 		flags     => $flags,
 		flags2    => $flags2,

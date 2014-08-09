@@ -88,7 +88,7 @@ sub bytes ($$) {
 	my $bytes = $self->{offset} > $self->{size} ? '' : substr($self->{data}, $self->{offset}, $n_avail);
 	$self->{offset} += $n_bytes;
 
-	return wantarray ? split('', $bytes) : $bytes;
+	return $bytes;
 }
 
 sub skip ($) {
@@ -205,8 +205,6 @@ Returns the object, to allow chaining a consequent parsing method.
 
 Normally returns the binary scalar of length N_BYTES starting from the
 current data pointer and advances the pointer.
-
-In the list context, a list of N_BYTES 1-byte scalars is returned.
 
 On data overflow, less bytes than N_BYTES returned (and on consequent
 calls, 0 bytes returns). The data pointer is guaranteed to be advanced

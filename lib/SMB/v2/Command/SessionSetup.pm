@@ -38,7 +38,7 @@ sub parse ($$%) {
 		$parser->uint16;  # session flags
 		my $offset = $parser->uint16;
 		my $length = $parser->uint16;
-		$self->security_buffer([ $parser->bytes($length) ]);
+		$self->security_buffer($parser->bytes($length));
 	} else {
 		$self->flags($parser->uint8);
 		$self->security_mode($parser->uint8);
@@ -47,7 +47,7 @@ sub parse ($$%) {
 		my $offset = $parser->uint16;
 		my $length = $parser->uint16;
 		$self->prev_session_id($parser->uint64);
-		$self->security_buffer([ $parser->bytes($length) ]);
+		$self->security_buffer($parser->bytes($length));
 	}
 
 	return $self;
@@ -69,14 +69,13 @@ sub pack ($$) {
 	my $self = shift;
 	my $packer = shift;
 
-	my $security_buffer = $self->security_buffer
-		or $self->abort_pack($packer, SMB::STATUS_INVALID_PARAMETER);
+	my $security_buffer = $self->security_buffer // die "No security_buffer";
 
 	if ($self->is_response) {
 		$packer
 			->uint16(0)  # session flags
 			->uint16($packer->diff('smb-header') + 4)
-			->uint16(0 + @$security_buffer)
+			->uint16(length $security_buffer)
 			->bytes ($security_buffer)
 		;
 	} else {
@@ -86,7 +85,7 @@ sub pack ($$) {
 			->uint32($self->capabilities)
 			->uint32(0)  # channel
 			->uint16($packer->diff('smb-header') + 12)
-			->uint16(0 + @$security_buffer)
+			->uint16(length $security_buffer)
 			->uint64($self->prev_session_id)
 			->bytes ($security_buffer)
 		;

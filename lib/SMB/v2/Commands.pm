@@ -104,7 +104,7 @@ sub parse ($$) {
 		$tid = $parser->uint32;
 	}
 	my $uid = $parser->uint64;
-	my @sign = $parser->bytes(16);
+	my $sign = $parser->bytes(16);
 	my $struct_size = $parser->uint16;
 
 	my $header = SMB::v2::Header->new(
@@ -113,7 +113,7 @@ sub parse ($$) {
 		uid       => $uid,
 		tid       => $tid,
 		mid       => $mid,
-		signature => \@sign,
+		signature => $sign,
 		flags     => $flags,
 		aid       => $aid,
 		credits   => $credits,

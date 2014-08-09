@@ -239,13 +239,14 @@ sub generate_asn1 {
 
 sub process_spnego ($$%) {
 	my $self = shift;
-	my $bytes = shift || return;
+	my $buffer = shift // return;
 	my %options = @_;
 
-	return unless @$bytes > 2;
+	my @bytes = split '', $buffer;
+	return unless @bytes > 2;
 
 	@parsed_context_values = ();
-	my $struct = parse_asn1($bytes);
+	my $struct = parse_asn1(\@bytes);
 	return unless $struct;
 
 	if (!defined $self->ntlmssp_supported || $options{is_initial}) {
@@ -280,14 +281,14 @@ sub process_spnego ($$%) {
 		my $off1 = $parser->skip(2)->uint32;
 		my $len2 = $parser->uint16;
 		my $off2 = $parser->skip(2)->uint32;
-		$self->client_domain(scalar $parser->reset($off1)->bytes($len1));
-		$self->client_host  (scalar $parser->reset($off2)->bytes($len2));
+		$self->client_domain($parser->reset($off1)->bytes($len1));
+		$self->client_host  ($parser->reset($off2)->bytes($len2));
 	} elsif (!defined $self->server_challenge) {
 		return $self->err("No expected NTLMSSP_CHALLENGE")
 			unless $parser->uint32 == NTLMSSP_CHALLENGE;
 		my $len1 = $parser->uint16;
 		my $off1 = $parser->skip(2)->uint32;
-		$self->server_challenge(scalar $parser->reset(24)->bytes(8));
+		$self->server_challenge($parser->reset(24)->bytes(8));
 		$self->server_host($parser->reset($off1)->str($len1));
 		my $itemtype;
 		do {{
@@ -316,7 +317,7 @@ sub process_spnego ($$%) {
 		my $off2 = $parser->skip(2)->uint32;
 		my $len3 = $parser->uint16;
 		my $off3 = $parser->skip(2)->uint32;
-		$self->client_challenge(scalar $parser->reset($noff + 28)->bytes(8));
+		$self->client_challenge($parser->reset($noff + 28)->bytes(8));
 		$self->client_domain($parser->reset($off1)->str($len1));
 		$self->client_host  ($parser->reset($off2)->str($len2));
 		$self->username     ($parser->reset($off3)->str($len2));
@@ -423,7 +424,7 @@ sub generate_spnego ($%) {
 			->str($self->server_dns_host)
 			->uint16(NTLMSSP_ITEM_TIMESTAMP)
 			->uint16(8)
-			->bytes([ "\0" x 8 ])
+			->bytes("\0" x 8)
 			->uint16(NTLMSSP_ITEM_TERMINATOR)
 			->uint16(0)
 		;
@@ -523,7 +524,7 @@ sub generate_spnego ($%) {
 RETURN:
 	return undef unless $struct;
 
-	return generate_asn1(@$struct);
+	return join '', @{generate_asn1(@$struct)};
 }
 
 1;
