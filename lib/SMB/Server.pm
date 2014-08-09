@@ -148,7 +148,11 @@ sub on_command ($$$) {
 			}
 		}
 		elsif ($command->is('Create')) {
-			my $file = SMB::File->new(name => $command->file_name, share_root => $tree->root);
+			my $file = SMB::File->new(
+				name => $command->file_name,
+				share_root => $tree->root,
+				is_ipc => $tree->is_ipc,
+			);
 			my $disposition = $command->disposition;
 			if ($file->exists && $disposition == SMB::File::DISPOSITION_OPEN) {
 				if ($command->requested_directory && !$file->is_directory) {

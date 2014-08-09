@@ -97,7 +97,9 @@ sub new ($%) {
 		$filename =~ s!/{2,}!/!g;
 		$filename = '.' if $filename eq '';
 	}
-	my @stat = $filename && -e $filename ? stat($filename) : ();
+	my $is_ipc = $options{is_ipc} ||= 0;
+	my @stat = !$is_ipc && $filename && -e $filename ? stat($filename) : ();
+	my $is_srv = $is_ipc && $name =~ /^(?:srvsvc|wkssvc)$/;
 
 	my $self = $class->SUPER::new(
 		name             => $name,
@@ -109,7 +111,7 @@ sub new ($%) {
 		allocation_size  => @stat ? $stat[12] * 512       : 0,
 		end_of_file      => @stat ? $stat[ 7]             : 0,
 		attributes       => @stat ? to_ntattr($stat[ 2])  : 0,
-		exists           => @stat ? 1 : 0,
+		exists           => @stat || $is_srv ? 1 : 0,
 		opens            => 0,
 		%options,
 	);
@@ -137,7 +139,7 @@ sub update ($$$$$$$$;$) {
 sub is_directory ($) {
 	my $self = shift;
 
-	return $self->attributes & ATTR_DIRECTORY ? 1 : 0;
+	return $self->is_ipc ? 0 : $self->attributes & ATTR_DIRECTORY ? 1 : 0;
 }
 
 sub to_string ($;$) {
@@ -173,7 +175,8 @@ sub delete_openfile ($$) {
 	my $self = shift;
 	my $openfile = shift;
 
-	close($openfile->handle);
+	close($openfile->handle)
+		if $openfile->handle;
 
 	--$self->{opens};
 }
@@ -254,6 +257,9 @@ sub overwrite_if ($) {
 sub open_by_disposition ($$) {
 	my $self = shift;
 	my $disposition = shift;
+
+	return $self->add_openfile(ACTION_OPENED, undef)
+		if $self->is_ipc;
 
 	return $self->supersede    if $disposition == DISPOSITION_SUPERSEDE;
 	return $self->open         if $disposition == DISPOSITION_OPEN;
