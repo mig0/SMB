@@ -74,7 +74,7 @@ sub to_ntattr ($) {
 	return 0
 		| (S_ISREG($mode) ? ATTR_NORMAL    : 0)
 		| (S_ISDIR($mode) ? ATTR_DIRECTORY : 0)
-		| (S_ISBLK($mode) ? ATTR_DEVICE    : 0)
+#		| (S_ISBLK($mode) ? ATTR_DEVICE    : 0)
 		| (S_ISCHR($mode) ? ATTR_DEVICE    : 0)
 		| ($mode & S_IWUSR ? 0 : ATTR_READONLY)
 		;
@@ -108,7 +108,7 @@ sub new ($%) {
 		last_access_time => @stat ? to_nttime($stat[ 8])  : 0,
 		last_write_time  => @stat ? to_nttime($stat[ 9])  : 0,
 		change_time      => @stat ? to_nttime($stat[ 9])  : 0,
-		allocation_size  => @stat ? $stat[12] * 512       : 0,
+		allocation_size  => @stat ? ($stat[12] || 0) * 512: 0,
 		end_of_file      => @stat ? $stat[ 7]             : 0,
 		attributes       => @stat ? to_ntattr($stat[ 2])  : 0,
 		exists           => @stat || $is_srv ? 1 : 0,
@@ -236,8 +236,13 @@ sub create ($) {
 sub overwrite ($) {
 	my $self = shift;
 
-	sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | O_TRUNC)
+	# no idea why O_TRUNC fails on Windows
+	my $mode = $^O eq 'MSWin32' ? 0 : O_TRUNC;
+
+	sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | $mode)
 		or return $self->_fail_exists(0);
+
+	truncate($fh, 0) if $^O eq 'MSWin32';
 
 	$self->add_openfile($fh, ACTION_OVERWRITTEN);
 }
