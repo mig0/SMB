@@ -18,7 +18,8 @@ package SMB::Time;
 use strict;
 use warnings;
 
-use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
+# bigint conflicts with Time::HiRes::time, prefer to lose precision for now
+#use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
 
 use Exporter 'import';
 our @EXPORT = qw(from_nttime to_nttime);
