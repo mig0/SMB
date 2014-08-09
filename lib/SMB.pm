@@ -86,6 +86,11 @@ sub mem ($$;$) {
 	my $label = shift || "Data dump";
 	return if $self->disable_log;
 
+	if (!defined $data) {
+		$self->msg("$label (undef)");
+		return;
+	}
+
 	my $len = length($data);
 	$self->msg(sprintf("%s (%lu bytes%s):", $label, $len, $len > $MAX_DUMP_BYTES ? ", shorten" : ""), @_);
 	$len = $MAX_DUMP_BYTES if $len > $MAX_DUMP_BYTES;
