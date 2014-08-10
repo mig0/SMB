@@ -191,6 +191,7 @@ SMB::Packer - Convenient data packer for network protocols like SMB
 	#   payload offset (4) and length (4),
 	#   filename prefixed with length (2 + length),
 	#   payload
+	# SMB::Parser documentation shows how it can be parsed back.
 
 	my $packer = SMB::Packer->new;
 
@@ -198,7 +199,7 @@ SMB::Packer - Convenient data packer for network protocols like SMB
 		->uint16_be(0xFACE)
 		->zero(48)
 		->mark('body-start')
-		->bytes(8, [ map { chr(rand(0x100)) } 1 .. 8 ]),
+		->bytes([ map { chr(rand(0x100)) } 1 .. 8 ]),
 		->uint8(1)
 		->uint16($mode)
 		->stub('payload-offset', 'uint32')
@@ -347,9 +348,9 @@ Labels the current data position as STUB_NAME (human readable string),
 advances the data pointer according to TYPE by temporarily filling
 this region with a zero equivalent, according to TYPE.
 
-TYPE may be either /^\d+$/, in which case it is taken as "bytes" of size
-TYPE, or "uint8", "uint16" and so on, in which case this is the type
-of the stub (see the corresponding "uint*" methods above).
+TYPE may be either a number matching /^\d+$/, in which case the stub type
+is taken to be "bytes" of this size; or "uint8", "uint16" and so on, then
+this is the stub type (see the corresponding "uint*" methods above).
 
 =item fill STUB_NAME DATA
 

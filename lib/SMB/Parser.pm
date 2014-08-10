@@ -130,6 +130,7 @@ SMB::Parser - Convenient data parser for network protocols like SMB
 	#   payload offset (4) and length (4),
 	#   filename prefixed with length (2 + length),
 	#   payload
+	# SMB::Packer documentation shows how it could be packed.
 
 	my $parser = SMB::Parser->new($packet_data_buffer);
 
@@ -156,6 +157,11 @@ This class allows to parse a binary data, like a network packet data.
 
 It supports extracting blobs, unsigned integers of different lengths,
 text in arbitrary encoding (SMB uses UTF-16LE) and more.
+
+The current data pointer is usually between 0 and the data size. The
+managed data once set is never changed, so the data pointer may go over
+the data size if the caller is not cautious. This is different from
+L<SMB::Packer> where the data is automatically extended in this case.
 
 This class inherits from L<SMB>, so B<msg>, B<err>, B<mem>, B<dump>,
 auto-created field accessor and other methods are available as well.
