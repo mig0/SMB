@@ -170,13 +170,13 @@ sub get_user_passwd_line ($$) {
 	);
 }
 
-sub load_user_passwords_from_file ($$) {
+sub load_user_passwords ($$) {
 	my $self = shift;
-	my $filename = shift || die "No passwd file";
+	my $filename = shift || return;
 
-	open PASSWD, "<$filename" or return 0;
+	open PASSWD, "<$filename" or return;
 	my @lines = <PASSWD>;
-	close PASSWD or return 0;
+	close PASSWD or return;
 
 	my %user_passwords = map {
 		s/^\s+//;
@@ -190,11 +190,10 @@ sub load_user_passwords_from_file ($$) {
 			: ();
 	} grep !/^\s*#/, @lines;
 
-	return 0 unless %user_passwords;
-
 	$self->user_passwords(\%user_passwords);
 
-	return 1;
+	# in scalar context - number of users loaded
+	return keys %user_passwords;
 }
 
 sub is_user_authenticated ($) {

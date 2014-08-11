@@ -44,6 +44,8 @@ sub new ($%) {
 	my $listen_label = $fifo_filename ? "fifo $fifo_filename" : "port $port";
 	die "Can't open $listen_label: $!\n" unless $main_socket;
 
+	$options{passwd_filename} //= "$FindBin::Bin/../conf/passwd.txt";
+
 	my $self = $class->SUPER::new(
 		%options,
 		main_socket => $main_socket,
@@ -83,7 +85,7 @@ sub on_connect ($$) {
 	# intended to be overriden in sub-classes
 
 	my $auth = $connection->auth;
-	$auth->load_user_passwords_from_file("$FindBin::Bin/../conf/passwd.txt")
+	$auth->load_user_passwords($self->passwd_filename)
 		or $auth->user_passwords({ test => '12345' });
 }
 
