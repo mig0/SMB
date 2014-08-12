@@ -607,3 +607,208 @@ RETURN:
 }
 
 1;
+
+__END__
+# ----------------------------------------------------------------------------
+
+=head1 NAME
+
+SMB::Auth - Authentication mechanisms for SMB (NTMLSSP and more)
+
+=head1 SYNOPSIS
+
+	use SMB::Auth;
+
+	# usually only one side is needed, not both like here
+	my $server_auth = SMB::Auth->new;
+	my $client_auth = SMB::Auth->new;
+
+	$server_auth->load_user_passwords("p.txt") or
+		$server_auth->set_user_passwords({ tom => '%#' });
+
+	# Negotiate Response
+	my $buffer = $server_auth->generate_spnego;
+	# suppose security-buffer is sent/received over network
+	$client_auth->process_spnego($buffer) or die;
+
+	# SessionSetup Request 1
+	$buffer = $client_auth->generate_spnego(host => 'client');
+	$server_auth->process_spnego($buffer) or die;
+
+	# SessionSetup Response 1
+	$buffer = $server_auth->generate_spnego(host => 'server');
+	$client_auth->process_spnego($buffer) or die;
+
+	# SessionSetup Request 2
+	$buffer = $client_auth->generate_spnego(
+		username => 'tom',
+		password => '%#',
+		domain => 'galaxy',
+	);
+	$server_auth->process_spnego($buffer)
+		or die "Failed to verify user password";
+
+	# SessionSetup Response 2
+	$buffer = $server_auth->generate_spnego();
+	$client_auth->process_spnego($buffer)
+		or die "Server didn't authenticate us";
+
+=head1 ABSTRACT
+
+SMB supports multiple mechanisms for authentication. Kerberos and NTMLSSP
+are the main mechanisms. The messages are encoded into security buffer of
+Negotiate response and SessionSetup requests/responses using ASN1
+(Abstract Syntax Notation One) encoding and GSS-API (Generic Security
+Service API) or SPNEGO (Simple Protected Negotiation).
+
+NTLMSSP stands for NT LAN Manager Security Support Provider. This is a
+binary messaging protocol utilizing NTLM authentication. NTLM is a
+challenge response authentication, NTLMv1 uses a server challenge, and
+NTLMv2 adds a client challenge. NTLMSSP is used when Kerberos can't be
+used or in some special cases, for example when a share is specified
+using IP rather than hostname, or a server does not belong to a domain.
+
+=head1 DESCRIPTION
+
+This class implement a client and a server authentication using NTLMSSP.
+
+This is implemented as a state machine. A client must alternatively call
+B<process_spnego> and B<generate_spnego>, a server must alternatively call
+B<generate_spnego> and B<process_spnego>.
+
+The authentication steps are usually:
+
+	INITIAL (listing supported mechanisms in Negotiate Response)
+	NTLMSSP_NEGOTIATE (first SessionSetup request)
+	NTLMSSP_CHALLENGE (first SessionSetup response)
+	NTLMSSP_AUTH (second SessionSetup request)
+	FINAL (second SessionSetup response, success or logon failure)
+
+This class inherits from L<SMB>, so B<msg>, B<err>, B<mem>, B<dump>,
+auto-created field accessor and other methods are available as well.
+
+=head1 METHODS
+
+=over 4
+
+=item new
+
+Class constructor. Creates an instance of SMB::Auth.
+
+=item set_user_passwords HASH
+
+Defines user passwords for a server implementation.
+
+Each HASH key is a user name. Each HASH value is either a scalar, in
+which case it is taken as a plain password, or ARRAY of two 16-byte
+blobs (LM password hash and NTLM password hash).
+
+=item load_user_passwords PASSWD_FILENAME
+
+Initializes user passwords for a server from a file containing users
+with their password hashes. The file format is
+USERNAME:LM_PASSWORD_HEX_HASH+NTLM_PASSWORD_HEX_HASH, like
+test:aebd4de384c7ec43aad3b435b51404ee7a21990fcd3d759941e45c490f143d5f
+
+File lines in a different format are ignored without a warning.
+
+Returns undef on file reading problem, and the number of users loaded
+otherwise. Note, that 0 is returned as a false value with no magic, since
+this usually means an error (like a non-passwd file).
+
+=item process_spnego BUFFER [OPTIONS]
+
+A client or a server should call this method after receiving security
+BUFFER in Negotiate response or SessionSetup request or SessionSetup
+response.
+
+Options: flag "is_initial" if given, instructs to restart the state
+machine (it must be specified on the second Negotiate response if any).
+
+=item generate_spnego [OPTIONS]
+
+A client or a server should call this method to generate security buffer
+for Negotiate response or SessionSetup request or SessionSetup response.
+
+Options: flag "is_initial" if given, instructs to restart the state
+machine (it must be specified on the second Negotiate response if any).
+
+Other options may be required depending on the state: "host", "domain",
+"username", "password" (strings in utf-8), "lm_password_hash",
+"ntlm_password_hash" (16-byte blobs).
+
+=back
+
+=head1 INTERNAL METHODS
+
+=over 4
+
+=item is_user_authenticated
+
+This may be explicitly called by a server to determine whether it
+received valid challenge/username/password response from a client after
+SessionSetup request with NTLMSSP_AUTH. The server starts from the user
+password (or its hash) and encrypts it in the same way the client does it,
+then compares the result with the received HMAC.
+
+Returns true if the user/client is authenticated. On false, server
+implementations should usually return STATUS_LOGON_FAILURE.
+
+Instead of explicitly calling this method a server implementation may
+just check the return value of the corresponding B<process_spnego>, that
+is undef upon user logon failure.
+
+=back
+
+=head1 FUNCTIONS
+
+No functions are exported, they may be called as SMB::Auth::FUNC_NAME.
+
+=over 4
+
+=item create_lm_hash PASSWORD
+
+=item create_ntlm_hash PASSWORD
+
+Creates LM or NTLM password hash (16-byte blob) from a plain password.
+
+=item create_lm_response LM_HASH SERVER_CHALLENGE
+
+=item create_ntlmv2_hash NTLM_HASH USERNAME DOMAIN
+
+=item create_lmv2_response NTLM_HASH USERNAME DOMAIN SERVER_CHALLENGE
+
+=item create_ntlmv2_response NTLM_HASH USERNAME DOMAIN SERVER_CHALLENGE
+
+These internal functions expose the NTML authentication details.
+
+=item get_user_passwd_line USERNAME PASSWORD
+
+May be used to create user password file loaded by a server.
+
+Returns a string (without end-of-line) for USERNAME and PASSWORD in
+passwd file format.
+
+=item parse_asn1 ASN1
+
+This internal function is used by B<process_spnego>.
+
+Returns perl structure given the ASN1 bytes (ARRAY).
+
+=item generate_asn1 TAG CONTENT ...
+
+This internal function is used by B<generate_spnego>.
+
+Returns ASN1 bytes (ARRAY) given the nested perl structure specified by
+TAG and CONTENT(s).
+
+=back
+
+=head1 SEE ALSO
+
+L<SMB::Crypt>, L<SMB>.
+
+=head1 AUTHOR
+
+Mikhael Goikhman <migo@cpan.org>
+
