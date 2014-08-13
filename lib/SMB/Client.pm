@@ -94,13 +94,13 @@ sub get_curr_connection ($) {
 
 	my $connections = $self->connections;
 	unless (%$connections) {
-		$self->err("Called get_connection when no connections established");
+		$self->err("Called get_curr_connection when no connections established");
 		return;
 	}
 
 	my $connection = $connections->{$self->curr_conn_key};
 	unless ($connection) {
-		$self->err("Called get_connection when curr_conn_key is invalid");
+		$self->err("Called get_curr_connection when curr_conn_key is invalid");
 		return;
 	}
 
@@ -246,8 +246,11 @@ sub _normalize_path ($$;$) {
 	$path = "$base/$path" if $path =~ m!^[^/]!;
 
 	$path =~ s![/\\]+$!/!g;  # to unix
+	# remove "./", "any/../", "../.." at the end
+	while ($path =~ s=(^|/)\.(?:/|$)=$1=g) {}
+	while ($path =~ s=(^|/)(?!\.\./)[^/]+/\.\.(?:/|$)=$1=g) {}
+	$path =~ s!(?:(?:^|/)\.\.)+/?$!!;
 	$path =~ s!/$!!;
-	while ($path =~ s=(^|/)(?!\.\./)[^/]+/\.\./=$1=) {}
 
 	if ($to_dos) {
 		$path =~ s=^/==;
@@ -287,6 +290,27 @@ sub perform_tree_command ($$$@) {
 			fid => $fid,
 		);
 		return wantarray ? @$files : $files;
+	} elsif ($command eq 'remove') {
+		my $filename = shift // return;
+		return if $filename eq '';
+		$filename = _normalize_path($filename, $tree->cwd, 1);
+		my $is_dir = shift || 0;
+		my $options = ($is_dir
+			? SMB::v2::Command::Create::OPTIONS_DIRECTORY_FILE
+			: SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE
+		) | SMB::v2::Command::Create::OPTIONS_DELETE_ON_CLOSE;
+		my $response = $self->process_request($connection, 'Create',
+			file_name => $filename,
+			options => $options,
+			access_mask => 0x10081,
+		);
+		return unless $response && $response->is_success;
+		my $fid = $response->fid;
+		$self->process_request($connection, 'Close',
+			fid => $fid,
+		);
+		return unless $response && $response->is_success;
+		return 1;
 	}
 
 	return;
