@@ -61,7 +61,7 @@ use constant {
 use SMB::OpenFile;
 
 sub from_ntattr ($) {
-	my $attr = shift || return 0;
+	my $attr = shift || 0;
 
 	return
 		$attr & ATTR_DIRECTORY ? O_DIRECTORY :
@@ -69,7 +69,7 @@ sub from_ntattr ($) {
 }
 
 sub to_ntattr ($) {
-	my $mode = shift || return 0;
+	my $mode = shift || 0;
 
 	return 0
 		| (S_ISREG($mode) ? ATTR_NORMAL    : 0)
@@ -228,7 +228,7 @@ sub create ($) {
 	my $self = shift;
 
 	sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | O_CREAT | O_EXCL)
-		or return $self->_fail_exists(1);
+		or return $self->_fail_exists(-e $self->filename ? 1 : 0);
 
 	$self->add_openfile($fh, ACTION_CREATED);
 }
