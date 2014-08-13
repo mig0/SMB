@@ -86,7 +86,7 @@ sub add_connection ($$$%) {
 
 sub delete_connection ($$) {
 	my $self = shift;
-	my $connection = shift;
+	my $connection = shift || return;
 
 	my $socket = $connection->socket;
 	$self->socket_pool->remove($socket);
