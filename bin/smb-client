@@ -98,7 +98,24 @@ sub check_tree() {
 	return 0;
 }
 
+sub format_cwd () {
+	my $connection = $client->get_curr_connection || return "[not-connected]";
+	my $addr = $connection->addr;
+	my $path = $tree ? "/" . $tree->share . $tree->cwd : '[no-tree-connected]';
+	$path = substr($path, 0, 48) . ".." if length($path) > 50;
+
+	return "$addr$path";
+}
+
 my %commands = (
+	status => sub {
+		while (my ($addr, $connection) = each %{$client->connections}) {
+			print "Connection $addr\n";
+			for my $tree ($connection->tree) {
+				print "\tShare $tree->{share}\n";
+			}
+		}
+	},
 	cd => sub {
 		return unless check_tree();
 		$tree->chdir(prompt("Directory to change to"));
@@ -113,13 +130,17 @@ my %commands = (
 		return unless check_tree();
 		$tree->copy(prompt("File to copy"), prompt("New file name"));
 	},
-	rename => sub {
-		return unless check_tree();
-		$tree->rename(prompt("File to rename"), prompt("New file name"));
-	},
 	del => sub {
 		return unless check_tree();
 		$tree->remove(prompt("File to remove"));
+	},
+	rmdir => sub {
+		return unless check_tree();
+		$tree->remove(prompt("File to remove"), 1);
+	},
+	rename => sub {
+		return unless check_tree();
+		$tree->rename(prompt("File to rename"), prompt("New file name"));
 	},
 	help => sub {
 		my $help = qq{
@@ -134,8 +155,9 @@ my %commands = (
 			switch [IDX]  change the current tree or connection (see "status")
 
 			cd DIR        change working directory
-			del FILE      remove file
 			dir [MASK]    list all or matching files
+			del FILE      remove file
+			rmdir DIR     remove dir
 			rename F1 F2  rename file
 
 			quit          exit the client (close all connections)
@@ -155,7 +177,8 @@ my %aliases = (
 print "Connected to $share_uri. Enter 'help' to list commands.\n";
 
 while (1) {
-	my $cmd = prompt("smb> ", 2) // last;
+	my $dir = format_cwd();
+	my $cmd = prompt("smb:$dir> ", 2) // last;
 	$cmd = $aliases{$cmd} if $aliases{$cmd};
 	last if $cmd eq 'quit';
 	my $func = $commands{$cmd};
