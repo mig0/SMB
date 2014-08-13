@@ -18,7 +18,7 @@ package SMB;
 use strict;
 use warnings;
 
-our $VERSION = 0.04;
+our $VERSION = 0.05;
 
 use constant {
 	STATUS_SUCCESS                  => 0x00000000,
