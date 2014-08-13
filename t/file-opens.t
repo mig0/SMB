@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 64;
+use Test::More tests => 47;
 use FindBin qw($Bin);
 
 use lib "$Bin/../lib";
@@ -34,14 +34,14 @@ sub test_open_method ($$) {
 
 	unless ($openfile) {
 		fail("skip after unexpected $method failure") if $expected_action;
-		fail("skip after unexpected $method failure") if $expected_action;
-		return;
+	} elsif (!$expected_action) {
+		diag("INFO: got unexpected $openfile instead of undef");
+	} elsif (UNIVERSAL::isa($openfile, 'SMB::OpenFile')) {
+		is($openfile->action, *{"SMB::File::$expected_action"}->(), "$method $expected_action");
+		$openfile->close;
+	} else {
+		fail("got unexpected $openfile instead of SMB::OpenFile with $expected_action");
 	}
-
-	isa_ok($openfile, 'SMB::OpenFile');
-	is($openfile->action, *{"SMB::File::$expected_action"}->(), "$method $expected_action");
-
-	$openfile->close;
 }
 
 test_open_method('create',       'ACTION_CREATED');
