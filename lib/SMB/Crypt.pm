@@ -271,25 +271,22 @@ sub md4_F { my ($x, $y, $z) = @_; return ($x & $y) | ((~$x) & $z); }
 sub md4_G { my ($x, $y, $z) = @_; return ($x & $y) | ($x & $z) | ($y & $z); }
 sub md4_H { my ($x, $y, $z) = @_; return $x ^ $y ^ $z; }
 
-my $is_32_bit_platform = (1 << 32) == 1;
-
-# uint32 arithmetic in perl
+# uint32 arithmetic in perl, hopefully works on all platforms
 sub add32 (@) {
-	my $sum = 0;
-	$sum += $_ for @_;
-
-	# this trick works, but consider to reimplement this function
-	if ($is_32_bit_platform) {
-		($sum -= 0xFFFFFFFF)-- while $sum > 0xFFFFFFFF;
+	my @sum = (0, 0);
+	for (@_) {
+		$sum[0] += $_ & 0xFFFF;
+		$sum[1] += ($_ >> 16) & 0xFFFF;
 	}
+	$sum[1] += $sum[0] >> 16;
+	$sum[0] &= 0xFFFF;
+	$sum[1] &= 0xFFFF;
 
-	return $sum & 0xFFFFFFFF;
+	return ($sum[1] << 16) + $sum[0];
 }
 
 sub md4_lshift ($$) {
 	my ($num, $count) = @_;
-
-	$num &= 0xFFFFFFFF;
 
 	return (($num << $count) & 0xFFFFFFFF) | ($num >> (32 - $count));
 }
