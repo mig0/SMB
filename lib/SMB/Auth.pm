@@ -613,7 +613,7 @@ __END__
 
 =head1 NAME
 
-SMB::Auth - Authentication mechanisms for SMB (NTMLSSP and more)
+SMB::Auth - Authentication mechanisms for SMB (NTLMSSP and more)
 
 =head1 SYNOPSIS
 
@@ -655,7 +655,7 @@ SMB::Auth - Authentication mechanisms for SMB (NTMLSSP and more)
 
 =head1 ABSTRACT
 
-SMB supports multiple mechanisms for authentication. Kerberos and NTMLSSP
+SMB supports multiple mechanisms for authentication. Kerberos and NTLMSSP
 are the main mechanisms. The messages are encoded into security buffer of
 Negotiate response and SessionSetup requests/responses using ASN1
 (Abstract Syntax Notation One) encoding and GSS-API (Generic Security
@@ -780,7 +780,7 @@ Creates LM or NTLM password hash (16-byte blob) from a plain password.
 
 =item create_ntlmv2_response NTLM_HASH USERNAME DOMAIN SERVER_CHALLENGE
 
-These internal functions expose the NTML authentication details.
+These internal functions expose the NTLM authentication details.
 
 =item get_user_passwd_line USERNAME PASSWORD
 
