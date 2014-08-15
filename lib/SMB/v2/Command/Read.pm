@@ -49,7 +49,8 @@ sub parse ($$) {
 	if ($self->is_response) {
 		my $offset = $parser->uint8;
 		$parser->uint8;   # reserved
-		my $length = $parser->uint32;  # update self->length?
+		my $length = $parser->uint32;
+		$self->length($length);
 		$self->remaining_bytes($parser->uint32);
 		$parser->uint32;  # reserved
 		$self->buffer($parser->bytes($length));
@@ -89,9 +90,10 @@ sub pack ($$) {
 			->uint8(0)   # padding
 			->uint8($self->flags)
 			->uint32($self->length)
-			->uint64($self->file_offset)
+			->uint64($self->offset)
 			->fid2($self->fid || die "No fid set")
 			->uint32($self->minimum_count)
+			->uint32($self->channel)
 			->uint32($self->remaining_bytes)
 			->uint16(0)  # channel info offset
 			->uint16(0)  # channel info length
