@@ -126,6 +126,10 @@ my %commands = (
 			printf "%-40s %s\n", $file->name, $file->mtime_string;
 		}
 	},
+	get => sub {
+		return unless check_tree();
+		$tree->dnload(prompt("File to get"), shift @args);
+	},
 	copy => sub {
 		return unless check_tree();
 		$tree->copy(prompt("File to copy"), prompt("New file name"));
@@ -156,6 +160,7 @@ my %commands = (
 
 			cd DIR        change working directory
 			dir [MASK]    list all or matching files
+			get SRC [DST] download remote file SRC from server
 			del FILE      remove file
 			rmdir DIR     remove dir
 			rename F1 F2  rename file
@@ -169,8 +174,9 @@ my %commands = (
 
 my %aliases = (
 	chdir => 'cd',
-	rm => 'del',
 	find => 'dir',
+	download => 'get',
+	rm => 'del',
 	exit => 'quit',
 );
 
