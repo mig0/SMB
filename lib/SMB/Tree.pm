@@ -73,6 +73,7 @@ sub perform_remote_command ($$@) {
 sub chdir  { shift()->perform_remote_command('chdir',  @_); }
 sub find   { shift()->perform_remote_command('find',   @_); }
 sub dnload { shift()->perform_remote_command('dnload', @_); }
+sub upload { shift()->perform_remote_command('upload', @_); }
 sub copy   { shift()->perform_remote_command('copy',   @_); }
 sub rename { shift()->perform_remote_command('rename', @_); }
 sub remove { shift()->perform_remote_command('remove', @_); }
