@@ -23,7 +23,7 @@ for my $n (1 .. @expected) {
 	my $suffix = $n == 1 ? '8' : $n == 2 ? '16' : $n == 3 ? '16_be' : $n == 4 ? '32' : $n == 5 ? '32_be' : die;
 	my $method = "uint$suffix";
 	$parser->reset;
-	is($parser->{offset}, 0, "$n reset");
+	is($parser->offset, 0, "$n reset");
 	for my $i (1 .. @$expected) {
 		is($parser->$method(), $expected->[$i - 1], "$n $method $i");
 	}
@@ -31,16 +31,16 @@ for my $n (1 .. @expected) {
 
 $parser->reset;
 is($parser->bytes(1), 'H',       "bytes(1)");
-is($parser->{offset}, 1,         "offset +1");
+is($parser->offset, 1,           "offset +1");
 is($parser->bytes(4), 'ello',    "bytes(4)");
-is($parser->{offset}, 5,         "offset +4");
+is($parser->offset, 5,           "offset +4");
 is($parser->bytes(8), ', world', "bytes(8)");
-is($parser->{offset}, 13,        "offset +8");
+is($parser->offset, 13,          "offset +8");
 is($parser->bytes(2), '',        "bytes(2)");
-is($parser->{offset}, 15,        "offset +2");
+is($parser->offset, 15,          "offset +2");
 
 $parser->set(scalar localtime);
-is($parser->bytes($parser->{size}), $parser->{data}, "bytes(all)");
-is($parser->{offset}, $parser->{size}, "offset end");
+is($parser->bytes($parser->size), $parser->data, "bytes(all)");
+is($parser->offset, $parser->size, "offset end");
 is($parser->uint32, undef,       "uint32");
 is($parser->bytes(2000), '',     "bytes(2000)");
