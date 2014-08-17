@@ -42,6 +42,7 @@ sub reset ($) {
 
 sub data { $_[0]->{data} }
 sub size { length($_[0]->{data}) }
+sub offset { $_[0]->{offset} }
 
 sub zero ($$) {
 	my $self = shift;
@@ -253,13 +254,12 @@ Returns the data packed so far (binary scalar).
 
 Returns length of the data packed so far (in bytes).
 
-=item offset [NEW_OFFSET]
+=item offset
 
-This getter/setter method is provided automatically for all SMB inherited
-classes. It is not usually needed, instead use the mechanisms of named
-marks or gaps.
+Returns the current data pointer (integer starting from 0).
 
-Returns (or sets) the current data pointer (integer starting from 0).
+Please use the mechanisms of named marks or gaps (see below) instead of
+manipulating the current data pointer directly.
 
 =item skip N_BYTES
 
