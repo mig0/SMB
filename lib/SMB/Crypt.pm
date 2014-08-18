@@ -285,7 +285,7 @@ sub add32 (@) {
 	return ($sum[1] << 16) + $sum[0];
 }
 
-sub md4_lshift ($$) {
+sub lshift32 ($$) {
 	my ($num, $count) = @_;
 
 	return (($num << $count) & 0xFFFFFFFF) | ($num >> (32 - $count));
@@ -294,19 +294,19 @@ sub md4_lshift ($$) {
 sub md4_ROUND1 {
 	my ($a, $b, $c, $d, $X, $s) = @_;
 
-	$md4_state[$a] = md4_lshift(add32($md4_state[$a], md4_F(@md4_state[$b, $c, $d]), $X, 0x00000000), $s);
+	$md4_state[$a] = lshift32(add32($md4_state[$a], md4_F(@md4_state[$b, $c, $d]), $X, 0x00000000), $s);
 }
 
 sub md4_ROUND2 {
 	my ($a, $b, $c, $d, $X, $s) = @_;
 
-	$md4_state[$a] = md4_lshift(add32($md4_state[$a], md4_G(@md4_state[$b, $c, $d]), $X, 0x5A827999), $s);
+	$md4_state[$a] = lshift32(add32($md4_state[$a], md4_G(@md4_state[$b, $c, $d]), $X, 0x5A827999), $s);
 }
 
 sub md4_ROUND3 {
 	my ($a, $b, $c, $d, $X, $s) = @_;
 
-	$md4_state[$a] = md4_lshift(add32($md4_state[$a], md4_H(@md4_state[$b, $c, $d]), $X, 0x6ED9EBA1), $s);
+	$md4_state[$a] = lshift32(add32($md4_state[$a], md4_H(@md4_state[$b, $c, $d]), $X, 0x6ED9EBA1), $s);
 }
 
 sub md4_64 (@) {
@@ -363,7 +363,7 @@ sub md4_copy4 ($) {
 }
 
 sub md4 ($) {
-	if (0 && has_Digest_MD4()) {
+	if (has_Digest_MD4()) {
 		return Digest::MD4::md4($_[0]);
 	}
 
