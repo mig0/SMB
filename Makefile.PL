@@ -30,7 +30,6 @@ WriteMakefile(
 		'POSIX' => 0,
 		'Sys::Hostname' => 0,
 		# less standard
-		'Digest::HMAC_MD5' => 0,
 		'Time::HiRes' => 0,
 	},
 );

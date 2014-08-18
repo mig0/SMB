@@ -19,14 +19,14 @@ use strict;
 use warnings;
 
 use bytes;
-use Digest::HMAC_MD5 qw(hmac_md5);  # no fallback implemenation yet
 
 use Exporter 'import';
-our @EXPORT = qw(des_crypt56 md4 hmac_md5);
+our @EXPORT = qw(des_crypt56 md4 md5 hmac_md5);
 
 # lazy probing
 our $has_Crypt_DES = undef;
 our $has_Digest_MD4 = undef;
+our $has_Digest_MD5 = undef;
 
 sub has_Crypt_DES () {
 	return 1 if $has_Crypt_DES;
@@ -40,6 +40,13 @@ sub has_Digest_MD4 () {
 	return 0 if defined $has_Digest_MD4;
 
 	return $has_Digest_MD4 = eval "require 'Digest/MD4.pm'";
+}
+
+sub has_Digest_MD5 () {
+	return 1 if $has_Digest_MD5;
+	return 0 if defined $has_Digest_MD5;
+
+	return $has_Digest_MD5 = eval "require 'Digest/MD5.pm'";
 }
 
 # DES parts for SMB authentication, ported from samba auth/smbdes.c
@@ -390,6 +397,133 @@ sub md4 ($) {
 	return join('', map { chr($_) } map { md4_copy4($_) } @md4_state)
 }
 
+# MD5 parts for SMB authentication, ported from samba crypto/md5.c
+
+our @md5_state;
+
+sub md5_F1 { $_[2] ^ ($_[0] & ($_[1] ^ $_[2])) }
+sub md5_F2 { $_[1] ^ ($_[2] & ($_[0] ^ $_[1])) }
+sub md5_F3 { $_[0] ^ $_[1] ^ $_[2] }
+sub md5_F4 { $_[1] ^ ($_[0] | ~$_[2]) }
+
+sub md5_pad64 {
+	my $data = shift() . "\x80";
+
+	my $len = length $data;
+	$data .= "\0" x (($len % 64 <= 56 ? 56 : 120) - $len % 64);
+	my $num_bits = ($len - 1) * 8;
+
+	return $data . pack 'VV', $num_bits & 0xFFFFFFFF, $num_bits >> 32;
+}
+
+sub md5_STEP ($$$$$$$$) {
+	my ($func, $a, $b, $c, $d, $X, $Y, $s) = @_;
+
+	$md5_state[$a] = lshift32(add32($md5_state[$a], $func->($md5_state[$b], $md5_state[$c], $md5_state[$d]), $X, $Y), $s);
+	$md5_state[$a] = add32($md5_state[$a], $md5_state[$b]);
+}
+
+sub md5_ROUND (@) {
+	my @old_state = @md5_state;
+
+	md5_STEP(\&md5_F1, 0, 1, 2, 3, $_[ 0], 0xd76aa478,  7);
+	md5_STEP(\&md5_F1, 3, 0, 1, 2, $_[ 1], 0xe8c7b756, 12);
+	md5_STEP(\&md5_F1, 2, 3, 0, 1, $_[ 2], 0x242070db, 17);
+	md5_STEP(\&md5_F1, 1, 2, 3, 0, $_[ 3], 0xc1bdceee, 22);
+	md5_STEP(\&md5_F1, 0, 1, 2, 3, $_[ 4], 0xf57c0faf,  7);
+	md5_STEP(\&md5_F1, 3, 0, 1, 2, $_[ 5], 0x4787c62a, 12);
+	md5_STEP(\&md5_F1, 2, 3, 0, 1, $_[ 6], 0xa8304613, 17);
+	md5_STEP(\&md5_F1, 1, 2, 3, 0, $_[ 7], 0xfd469501, 22);
+	md5_STEP(\&md5_F1, 0, 1, 2, 3, $_[ 8], 0x698098d8,  7);
+	md5_STEP(\&md5_F1, 3, 0, 1, 2, $_[ 9], 0x8b44f7af, 12);
+	md5_STEP(\&md5_F1, 2, 3, 0, 1, $_[10], 0xffff5bb1, 17);
+	md5_STEP(\&md5_F1, 1, 2, 3, 0, $_[11], 0x895cd7be, 22);
+	md5_STEP(\&md5_F1, 0, 1, 2, 3, $_[12], 0x6b901122,  7);
+	md5_STEP(\&md5_F1, 3, 0, 1, 2, $_[13], 0xfd987193, 12);
+	md5_STEP(\&md5_F1, 2, 3, 0, 1, $_[14], 0xa679438e, 17);
+	md5_STEP(\&md5_F1, 1, 2, 3, 0, $_[15], 0x49b40821, 22);
+
+	md5_STEP(\&md5_F2, 0, 1, 2, 3, $_[ 1], 0xf61e2562,  5);
+	md5_STEP(\&md5_F2, 3, 0, 1, 2, $_[ 6], 0xc040b340,  9);
+	md5_STEP(\&md5_F2, 2, 3, 0, 1, $_[11], 0x265e5a51, 14);
+	md5_STEP(\&md5_F2, 1, 2, 3, 0, $_[ 0], 0xe9b6c7aa, 20);
+	md5_STEP(\&md5_F2, 0, 1, 2, 3, $_[ 5], 0xd62f105d,  5);
+	md5_STEP(\&md5_F2, 3, 0, 1, 2, $_[10], 0x02441453,  9);
+	md5_STEP(\&md5_F2, 2, 3, 0, 1, $_[15], 0xd8a1e681, 14);
+	md5_STEP(\&md5_F2, 1, 2, 3, 0, $_[ 4], 0xe7d3fbc8, 20);
+	md5_STEP(\&md5_F2, 0, 1, 2, 3, $_[ 9], 0x21e1cde6,  5);
+	md5_STEP(\&md5_F2, 3, 0, 1, 2, $_[14], 0xc33707d6,  9);
+	md5_STEP(\&md5_F2, 2, 3, 0, 1, $_[ 3], 0xf4d50d87, 14);
+	md5_STEP(\&md5_F2, 1, 2, 3, 0, $_[ 8], 0x455a14ed, 20);
+	md5_STEP(\&md5_F2, 0, 1, 2, 3, $_[13], 0xa9e3e905,  5);
+	md5_STEP(\&md5_F2, 3, 0, 1, 2, $_[ 2], 0xfcefa3f8,  9);
+	md5_STEP(\&md5_F2, 2, 3, 0, 1, $_[ 7], 0x676f02d9, 14);
+	md5_STEP(\&md5_F2, 1, 2, 3, 0, $_[12], 0x8d2a4c8a, 20);
+
+	md5_STEP(\&md5_F3, 0, 1, 2, 3, $_[ 5], 0xfffa3942,  4);
+	md5_STEP(\&md5_F3, 3, 0, 1, 2, $_[ 8], 0x8771f681, 11);
+	md5_STEP(\&md5_F3, 2, 3, 0, 1, $_[11], 0x6d9d6122, 16);
+	md5_STEP(\&md5_F3, 1, 2, 3, 0, $_[14], 0xfde5380c, 23);
+	md5_STEP(\&md5_F3, 0, 1, 2, 3, $_[ 1], 0xa4beea44,  4);
+	md5_STEP(\&md5_F3, 3, 0, 1, 2, $_[ 4], 0x4bdecfa9, 11);
+	md5_STEP(\&md5_F3, 2, 3, 0, 1, $_[ 7], 0xf6bb4b60, 16);
+	md5_STEP(\&md5_F3, 1, 2, 3, 0, $_[10], 0xbebfbc70, 23);
+	md5_STEP(\&md5_F3, 0, 1, 2, 3, $_[13], 0x289b7ec6,  4);
+	md5_STEP(\&md5_F3, 3, 0, 1, 2, $_[ 0], 0xeaa127fa, 11);
+	md5_STEP(\&md5_F3, 2, 3, 0, 1, $_[ 3], 0xd4ef3085, 16);
+	md5_STEP(\&md5_F3, 1, 2, 3, 0, $_[ 6], 0x04881d05, 23);
+	md5_STEP(\&md5_F3, 0, 1, 2, 3, $_[ 9], 0xd9d4d039,  4);
+	md5_STEP(\&md5_F3, 3, 0, 1, 2, $_[12], 0xe6db99e5, 11);
+	md5_STEP(\&md5_F3, 2, 3, 0, 1, $_[15], 0x1fa27cf8, 16);
+	md5_STEP(\&md5_F3, 1, 2, 3, 0, $_[ 2], 0xc4ac5665, 23);
+
+	md5_STEP(\&md5_F4, 0, 1, 2, 3, $_[ 0], 0xf4292244,  6);
+	md5_STEP(\&md5_F4, 3, 0, 1, 2, $_[ 7], 0x432aff97, 10);
+	md5_STEP(\&md5_F4, 2, 3, 0, 1, $_[14], 0xab9423a7, 15);
+	md5_STEP(\&md5_F4, 1, 2, 3, 0, $_[ 5], 0xfc93a039, 21);
+	md5_STEP(\&md5_F4, 0, 1, 2, 3, $_[12], 0x655b59c3,  6);
+	md5_STEP(\&md5_F4, 3, 0, 1, 2, $_[ 3], 0x8f0ccc92, 10);
+	md5_STEP(\&md5_F4, 2, 3, 0, 1, $_[10], 0xffeff47d, 15);
+	md5_STEP(\&md5_F4, 1, 2, 3, 0, $_[ 1], 0x85845dd1, 21);
+	md5_STEP(\&md5_F4, 0, 1, 2, 3, $_[ 8], 0x6fa87e4f,  6);
+	md5_STEP(\&md5_F4, 3, 0, 1, 2, $_[15], 0xfe2ce6e0, 10);
+	md5_STEP(\&md5_F4, 2, 3, 0, 1, $_[ 6], 0xa3014314, 15);
+	md5_STEP(\&md5_F4, 1, 2, 3, 0, $_[13], 0x4e0811a1, 21);
+	md5_STEP(\&md5_F4, 0, 1, 2, 3, $_[ 4], 0xf7537e82,  6);
+	md5_STEP(\&md5_F4, 3, 0, 1, 2, $_[11], 0xbd3af235, 10);
+	md5_STEP(\&md5_F4, 2, 3, 0, 1, $_[ 2], 0x2ad7d2bb, 15);
+	md5_STEP(\&md5_F4, 1, 2, 3, 0, $_[ 9], 0xeb86d391, 21);
+
+	$md5_state[$_] = add32($md5_state[$_], $old_state[$_]) for 0 .. 3;
+}
+
+sub md5 ($;$) {
+	if (has_Digest_MD5()) {
+		return Digest::MD5::md5(join '', @_);
+	}
+
+	my $data = md5_pad64(join '', @_);
+
+	@md5_state = ( 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476 );
+
+	for my $i (0 .. length($data) / 64 - 1) {
+		md5_ROUND(unpack 'V16', substr $data, $i * 64, 64);
+	}
+
+	pack 'V4', @md5_state;
+}
+
+sub hmac_md5 ($$) {
+	my ($data, $key) = @_;
+
+	$key = md5($key) if length($key) > 64;
+
+	my $ipad = $key ^ ("\x36" x 64);
+	my $opad = $key ^ ("\x5c" x 64);
+
+	return md5($opad, md5($ipad, $data));
+}
+
 1;
 
 __END__
@@ -401,21 +535,23 @@ SMB::Crypt - Fallback implementations of cryptography algorithms for SMB
 
 =head1 SYNOPSIS
 
-	use SMB::Crypt qw(md4);
+	use SMB::Crypt qw(md4 md5);
 
-	my $digest = md4($data);
+	my $digest1 = md4($data);
+
+	my $digest2 = md5($data);
 
 =head1 ABSTRACT
 
-This module provides fallback implementations for DES and MD4 in pure perl to reduce dependence on non-standard perl modules.
+This module provides fallback implementations for DES, MD4 and MD5 in
+pure perl to reduce dependence on non-standard perl modules.
 
-However it is recommended to install L<Crypt::DES> and L<Digest::MD4> modules to get improved performance.
-
-You should also install L<Digest::HMAC_MD5> that currently has no fallback implementation.
+However it is recommended to install L<Crypt::DES>, L<Digest::MD4> and
+L<Digest::MD5> modules to get improved performance.
 
 =head1 EXPORTED FUNCTIONS
 
-By default, functions B<des_crypt56>, B<md4> and B<hmac_md5> are exported using the standard L<Exporter> mechanism.
+By default, functions B<des_crypt56>, B<md4>, B<md5> and B<hmac_md5> are exported using the standard L<Exporter> mechanism.
 
 =over 4
 
@@ -431,9 +567,15 @@ Returns digest of 16 bytes, similar to Digest::MD4::md4.
 
 If L<Digest::MD4> is found, it is used, otherwise pure perl fallback implemenation is used.
 
+=item md5 DATA ...
+
+Returns digest of 16 bytes, similar to Digest::MD5::md5.
+
+If L<Digest::MD5> is found, it is used, otherwise pure perl fallback implemenation is used.
+
 =item hmac_md5 DATA KEY
 
-Returns digest of 16 bytes, the same as Digest::HMAC_MD5::hmac_md5.
+Returns digest of 16 bytes, similar to Digest::HMAC_MD5::hmac_md5. Uses B<md5> internally.
 
 =back
 
