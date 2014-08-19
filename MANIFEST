@@ -1,9 +1,9 @@
+CHANGES
 COPYING
 INSTALL
 Makefile.PL
 MANIFEST
 README
-TODO
 bin/smb-client
 bin/smb-proxy
 bin/smb-server
@@ -36,6 +36,7 @@ lib/SMB/v2/Command/QueryDirectory.pm
 lib/SMB/v2/Command/Read.pm
 lib/SMB/v2/Command/SessionSetup.pm
 lib/SMB/v2/Command/TreeConnect.pm
+lib/SMB/v2/Command/Write.pm
 lib/SMB/v2/Commands.pm
 lib/SMB/v2/Header.pm
 shares/test/file1.txt
