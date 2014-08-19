@@ -1,5 +1,11 @@
 Releases of SMB-Perl library and main changes.
 
+0.06 - 2014-08-19
+
+* Removed dependancy on Digest::HMAC_MD5 by fallback md5 implementation.
+* Added new client functionality: download, upload.
+* Added new class SMB::v2::Command::Write.
+
 0.05 - 2014-08-13
 
 * Fixed tests to pass on all platforms (Windows, OpenBSD; 32, 64 bits).
