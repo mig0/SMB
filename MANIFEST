@@ -36,6 +36,7 @@ lib/SMB/v2/Command/QueryDirectory.pm
 lib/SMB/v2/Command/QueryInfo.pm
 lib/SMB/v2/Command/Read.pm
 lib/SMB/v2/Command/SessionSetup.pm
+lib/SMB/v2/Command/SetInfo.pm
 lib/SMB/v2/Command/TreeConnect.pm
 lib/SMB/v2/Command/Write.pm
 lib/SMB/v2/Commands.pm
