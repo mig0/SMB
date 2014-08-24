@@ -197,7 +197,8 @@ while (1) {
 	if ($func) {
 		$func->();
 	} else {
-		print "Invalid command, try 'help'\n";
+		print "Invalid command '$cmd', try 'help'\n";
 	}
+	@args = ();  # forget unconsumed args
 }
 
