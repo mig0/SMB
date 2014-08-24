@@ -140,11 +140,13 @@ my %commands = (
 	},
 	del => sub {
 		return unless check_tree();
-		$tree->remove(prompt("File to remove"));
+		my $recursive = @args && $args[0] eq '-r' && shift @args && 1;
+		$tree->remove({ recursive => $recursive }, prompt("File to remove"));
 	},
 	rmdir => sub {
 		return unless check_tree();
-		$tree->remove(prompt("File to remove"), 1);
+		my $recursive = @args && $args[0] eq '-r' && shift @args && 1;
+		$tree->remove({ recursive => $recursive }, prompt("File to remove"), 1);
 	},
 	rename => sub {
 		return unless check_tree();
@@ -166,8 +168,8 @@ my %commands = (
 			dir [MASK]    list all or matching files
 			get SRC [DST] download remote file SRC from server
 			put SRC [DST] upload local file SRC file to server
-			del FILE      remove file
-			rmdir DIR     remove dir
+			del [-r] FILE remove file
+			rmdir [-r] D  remove dir
 			rename F1 F2  rename file
 
 			quit          exit the client (close all connections)

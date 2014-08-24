@@ -271,12 +271,58 @@ sub _basename ($;$) {
 	return $path =~ /.*\Q$delim\E(.*)/ ? $1 : $path;
 }
 
+sub remove_file ($$$$) {
+	my $self = shift;
+	my $connection = shift;
+	my $file = shift // return $self->err("No file to remove");
+	my $recursive = shift;
+
+	my $options = ($file->is_directory
+		? SMB::v2::Command::Create::OPTIONS_DIRECTORY_FILE
+		: SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE
+	) | SMB::v2::Command::Create::OPTIONS_DELETE_ON_CLOSE;
+	my $response = $self->process_request($connection, 'Create',
+		file_name => $file->name,
+		options => $options,
+		access_mask => 0x10081,
+	);
+	return unless $response && $response->is_success;
+	my $fid = $response->fid;
+	if ($recursive && $file->is_directory) {
+		my @files = ();
+		while (1) {
+			$response = $self->process_request($connection, 'QueryDirectory',
+				file_pattern => "*",
+				fid => $fid,
+			);
+			last if $response && $response->status == SMB::STATUS_NO_MORE_FILES;
+			return $self->err("Failed to get file list in " . $file->name)
+				unless $response && $response->is_success;
+			push @files, @{$response->files};
+		}
+		my $dirname = $file->name;
+		for my $file (@files) {
+			# TODO: consider to have full file name already on parse-response
+			$file->name("$dirname\\" . $file->name) if $dirname;
+			next if $file->name =~ m/(^|\\)\.\.?$/;
+			$self->remove_file($connection, $file, 1);
+		}
+	}
+	$self->process_request($connection, 'Close',
+		fid => $fid,
+	);
+	return unless $response && $response->is_success;
+
+	return 1;
+}
+
 sub perform_tree_command ($$$@) {
 	my $self = shift;
 	my $tree = shift;
 	my $command = shift;
 
 	my $connection = $self->find_connection_by_tree($tree) || return;
+	my %options = @_ && ref($_[0]) eq 'HASH' ? %{shift()} : ();
 
 	if ($command eq 'chdir') {
 		my $dir = shift // '';
@@ -397,24 +443,11 @@ sub perform_tree_command ($$$@) {
 		return $self->err("No filename") if $filename eq '';
 		$filename = _normalize_path($filename, $tree->cwd, 1);
 
-		my $is_dir = shift || 0;
-		my $options = ($is_dir
-			? SMB::v2::Command::Create::OPTIONS_DIRECTORY_FILE
-			: SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE
-		) | SMB::v2::Command::Create::OPTIONS_DELETE_ON_CLOSE;
-		my $response = $self->process_request($connection, 'Create',
-			file_name => $filename,
-			options => $options,
-			access_mask => 0x10081,
-		);
-		return unless $response && $response->is_success;
-		my $fid = $response->fid;
-		$self->process_request($connection, 'Close',
-			fid => $fid,
-		);
-		return unless $response && $response->is_success;
+		my $recursive = $options{recursive};
+		my $is_dir = shift // $recursive;
+		my $file = SMB::File->new(name => $filename, is_directory => $is_dir);
 
-		return 1;
+		return $self->remove_file($connection, $file, $recursive);
 	}
 
 	return;
