@@ -88,6 +88,7 @@ sub new ($%) {
 	$name =~ s!\\!\/!g;
 	$name =~ s!/{2,}!/!g;
 	$name =~ s!/$!!;
+	my $is_directory = delete $options{is_directory};
 	my $root = $options{share_root} //= undef;
 	my $filename = undef;
 	if ($root) {
@@ -110,7 +111,7 @@ sub new ($%) {
 		change_time      => @stat ? to_nttime($stat[ 9])  : 0,
 		allocation_size  => @stat ? ($stat[12] || 0) * 512: 0,
 		end_of_file      => @stat ? $stat[ 7]             : 0,
-		attributes       => @stat ? to_ntattr($stat[ 2])  : 0,
+		attributes       => @stat ? to_ntattr($stat[ 2])  : $is_directory ? ATTR_DIRECTORY : 0,
 		exists           => @stat || $is_srv ? 1 : 0,
 		opens            => 0,
 		%options,
