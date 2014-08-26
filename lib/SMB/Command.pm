@@ -113,7 +113,7 @@ sub abort_pack ($$) {
 	return $self;
 }
 
-sub dump ($) {
+sub to_string ($) {
 	my $self = shift;
 
 	return sprintf "SMB%d [%s %s] mid=%u uid=%x tid=%02x%s",

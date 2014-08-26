@@ -149,7 +149,7 @@ sub recv_command ($) {
 		: $self->parse_smb2;
 
 	if ($command) {
-		$self->msg("%s", $command->dump);
+		$self->msg("%s", $command->to_string);
 	} else {
 		$self->err("Failed to parse SMB%d packet", $is_smb1 ? 1 : 2);
 	}
@@ -174,7 +174,7 @@ sub send_command ($$) {
 	my $self = shift;
 	my $command = shift;
 
-	$self->msg("%s", $command->dump);
+	$self->msg("%s", $command->to_string);
 
 	$self->packer->reset;
 

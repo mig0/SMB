@@ -476,7 +476,7 @@ sub wait_for_response ($$) {
 	}
 
 	unless ($response->is_response_to($request)) {
-		$self->err("Unexpected: " . $response->dump);
+		$self->err("Unexpected: " . $response->to_string);
 		return;
 	}
 
