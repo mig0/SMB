@@ -144,7 +144,7 @@ sub _dump_eol () {
 	return "\n";
 }
 
-sub _dump_string ($) {
+sub dump_string ($) {
 	my $value = shift;
 
 	my $len = length($value);
@@ -155,12 +155,12 @@ sub _dump_string ($) {
 	}
 
 	$value =~ s/([\\"])/\\$1/g;
-	$value =~ s/([^\\" -\x7e])/sprintf("\\x%02x", ord($1))/ge;
+	$value =~ s/([^ -\x7e])/sprintf("\\x%02x", ord($1))/ge;
 
 	return $value;
 }
 
-sub _dump_value ($) {
+sub dump_value ($) {
 	my $value = shift;
 	my $level  = shift || 0;
 	my $inline = shift || 0;
@@ -175,7 +175,7 @@ sub _dump_value ($) {
 	if (! $type) {
 		$dump .= defined $value
 			? $value =~ /^-?\d+$/ ||$inline == 2 && $value =~ /^-?\w+$/
-				? $value : '"' . _dump_string($value) . '"'
+				? $value : '"' . dump_string($value) . '"'
 			: 'undef';
 	} elsif ($type eq 'ARRAY') {
 		if ($is_seen) {
@@ -186,7 +186,7 @@ sub _dump_value ($) {
 			my $prev_elem = '';
 			foreach (@array) {
 				# compress equal consecutive elements
-				my $elem = &_dump_value($_, $level + 1, 1);
+				my $elem = &dump_value($_, $level + 1, 1);
 				if ($elem eq $prev_elem) {
 					$dump =~ s/^(\s+)(?:\()?(.*?)(?:\) x (\d+))?,$(\n)\z/my $c = ($3 || 1) + 1; "$1($2) x $c," . _dump_eol()/me;
 					next;
@@ -213,9 +213,9 @@ sub _dump_value ($) {
 				my $val = $value->{$key};
 				last if ++$idx == $dump_array_limit && $size > $dump_array_limit;
 				$dump .= _dump_prefix($level + 1);
-				$dump .= &_dump_value($key, $level + 1, 2);
+				$dump .= &dump_value($key, $level + 1, 2);
 				$dump .= " => ";
-				$dump .= &_dump_value($val, $level + 1, 1);
+				$dump .= &dump_value($val, $level + 1, 1);
 				$dump .= "," . _dump_eol();
 			}
 			if ($size > $dump_array_limit) {
@@ -232,7 +232,7 @@ sub _dump_value ($) {
 		$dump .= "GLOB";
 	} elsif ($type eq 'SCALAR') {
 		$dump .= "\\";
-		$dump .= &_dump_value($$value, $level + 1, 1);
+		$dump .= &dump_value($$value, $level + 1, 1);
 	} else {
 		$dump .= "$type ";
 		my $native_type;
@@ -243,7 +243,7 @@ sub _dump_value ($) {
 
 		$dump_seen{$value} = 0;
 		bless($value, $native_type);
-		$dump .= &_dump_value($value, $level, 1);
+		$dump .= &dump_value($value, $level, 1);
 		bless($value, $type);
 	}
 
@@ -257,7 +257,7 @@ sub dump ($;$) {
 	my $self = shift;
 	my $level = 0;
 
-	my $dump = _dump_value($self);
+	my $dump = dump_value($self);
 
 	%dump_seen = ();
 
@@ -447,6 +447,35 @@ about what was omitted.
 For each field in the object, the method of this name is auto-create on
 demand. This method returns the field value if there are no arguments
 (getter) and sets NEW_VALUE if there is a single argument (setter).
+
+=back
+
+=head1 FUNCTIONS
+
+No functions are exported, so functions and status code constants should
+be prefixed by the package namespace, like:
+
+	print SMB::dump_value($nested_array);
+
+	$status = SMB::STATUS_CANNOT_DELETE
+		if $status == SMB::STATUS_ACCESS_DENIED;
+
+=over 4
+
+=item dump_value PERL_VALUE
+
+Returns a neat PERL_VALUE presentation as a multi-line string.
+
+Used by B<dump> method.
+
+=item dump_string STRING
+
+Returns a printable STRING presentation as a one-line string.
+Long strings over 50 characters are cut, like "very lon..+8".
+Backslash and quote characters are prefixed with a backslash, and non
+printable or non-ascii characters are presented in hex, like "\x0a\xa0".
+
+Used by B<dump_value> function.
 
 =back
 
