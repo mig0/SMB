@@ -152,7 +152,9 @@ sub on_command ($$$) {
 			my $tree_root = $self->share_roots->{$share};
 			if ($tree_root || $share eq 'IPC$') {
 				my $tid = $command->header->tid(@{$connection->{trees}} + 1);
-				push @{$connection->{trees}}, SMB::Tree->new($share, $tid, root => $tree_root);
+				$tree = SMB::Tree->new($share, $tid, root => $tree_root);
+				push @{$connection->{trees}}, $tree;
+				$command->tree($tree);
 			} else {
 				$error = SMB::STATUS_BAD_NETWORK_NAME;
 			}
@@ -188,7 +190,7 @@ sub on_command ($$$) {
 			delete $connection->{openfiles}{@$fid};
 		}
 		elsif ($command->is('Read')) {
-			$command->{buffer} = $openfile->file->read(
+			$command->{buffer} = $openfile->read(
 				length => $command->{length},
 				offset => $command->{offset},
 				minlen => $command->{minimum_count},

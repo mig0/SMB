@@ -51,7 +51,7 @@ sub read ($%) {
 	my $self = shift;
 	my %params = @_;  # length offset minlen remain
 
-	my $fh = $self->{handle} or return;
+	my $fh = $self->{handle} or return '';
 	sysseek($fh, $params{offset} || 0, SEEK_SET) or return;
 
 	my $length = $params{length} // return;
