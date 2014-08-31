@@ -161,10 +161,10 @@ sub mtime_string { to_string($_[0]->mtime, $_[1]) }
 
 sub add_openfile ($$$) {
 	my $self = shift;
-	my $action = shift;
 	my $handle = shift;
+	my $action = shift;
 
-	my $openfile = SMB::OpenFile->new($self, $action, $handle);
+	my $openfile = SMB::OpenFile->new($self, $handle, $action);
 
 	$self->{opens}++;
 	$self->exists(1);
@@ -264,7 +264,7 @@ sub open_by_disposition ($$) {
 	my $self = shift;
 	my $disposition = shift;
 
-	return $self->add_openfile(ACTION_OPENED, undef)
+	return $self->add_openfile(undef, ACTION_OPENED)
 		if $self->is_ipc;
 
 	return $self->supersede    if $disposition == DISPOSITION_SUPERSEDE;
