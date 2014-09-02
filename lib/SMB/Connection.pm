@@ -107,7 +107,7 @@ sub recv_nbss ($) {
 	my $data2;  # SMB packet
 	my $header_label = 'NetBIOS Session Service header';
 	my $len = $socket->read($data1, 4) //
-		return $self->err("Read failed: $!");
+		return $self->err("Socket read failed: $!");
 	if ($len != 4) {
 		$self->err("Can't read $header_label (got $len bytes)");
 		return;

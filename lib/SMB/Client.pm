@@ -96,7 +96,7 @@ sub get_curr_connection ($) {
 
 	my $connections = $self->connections;
 	unless (%$connections) {
-		$self->err("Called get_curr_connection when no connections established");
+		$self->err("Called get_curr_connection without established connections");
 		return;
 	}
 
