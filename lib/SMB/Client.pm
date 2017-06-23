@@ -343,7 +343,7 @@ sub perform_tree_command ($$$@) {
 			file_pattern => $pattern,
 			fid => $fid,
 		);
-		my $files = $response && $response->is_success ? $response->files : undef;
+		my $files = $response && $response->is_success ? $response->files : [];
 		$self->process_request($connection, 'Close',
 			fid => $fid,
 		);
