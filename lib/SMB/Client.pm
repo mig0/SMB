@@ -343,11 +343,12 @@ sub perform_tree_command ($$$@) {
 			file_pattern => $pattern,
 			fid => $fid,
 		);
-		my $files = $response && $response->is_success ? $response->files : [];
+		my $files = $response && $response->is_success ? $response->files : undef;
 		$self->process_request($connection, 'Close',
 			fid => $fid,
 		);
 
+		return unless $files;
 		return wantarray ? @$files : $files;
 	} elsif ($command eq 'dnload') {
 		my $filename = shift // '';
