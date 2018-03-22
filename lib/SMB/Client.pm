@@ -348,6 +348,7 @@ sub perform_tree_command ($$$@) {
 			fid => $fid,
 		);
 
+		return unless $files;
 		return wantarray ? @$files : $files;
 	} elsif ($command eq 'dnload') {
 		my $filename = shift // '';
