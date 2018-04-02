@@ -35,6 +35,7 @@ sub new ($$$$%) {
 		handle  => $handle,
 		action  => $action,
 		last_index => 0,
+		delete_on_close => 0,
 		%options,
 	);
 

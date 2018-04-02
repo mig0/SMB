@@ -7,6 +7,7 @@ Releases of SMB-Perl library and main changes.
 * Added new client functionality: recursive remove.
 * Added alternative remove functionality in client;
   set env $SMB_CLIENT_REMOVE_FILE_USING_SETINFO for this.
+* Added remove functionality in server (delete-on-close).
 
 0.06 - 2014-08-19
 

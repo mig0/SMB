@@ -180,14 +180,24 @@ sub on_command ($$$) {
 					$connection->{openfiles}{@$fid} = $openfile;
 					$command->fid($fid);
 					$command->openfile($openfile);
+					$openfile->delete_on_close(1) if $command->requested_delete_on_close;
 				} else {
 					$error = SMB::STATUS_NO_SUCH_FILE;
 				}
 			}
 		}
 		elsif ($command->is('Close')) {
+			if ($openfile->delete_on_close) {
+				my $filename = $openfile->file->filename;
+				$self->msg("Removing $filename");
+				unlink($filename) or
+					$self->err("Failed to unlink $filename: $!");
+			}
 			$openfile->close;
 			delete $connection->{openfiles}{@$fid};
+		}
+		elsif ($command->is('SetInfo')) {
+			$openfile->delete_on_close(1) if $command->requested_delete_on_close;
 		}
 		elsif ($command->is('Read')) {
 			$command->{buffer} = $openfile->read(

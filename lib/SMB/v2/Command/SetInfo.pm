@@ -99,4 +99,13 @@ sub pack ($$) {
 	}
 }
 
+sub requested_delete_on_close ($) {
+	my $self = shift;
+
+	return
+		$self->type == TYPE_FILE &&
+		$self->level == FILE_LEVEL_DISPOSITION &&
+		ord($self->buffer) & FILE_DISPOSITION_DELETE_ON_CLOSE ? 1 : 0;
+}
+
 1;

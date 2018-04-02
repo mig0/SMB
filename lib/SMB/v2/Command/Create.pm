@@ -169,4 +169,10 @@ sub requested_non_directory ($) {
 	return $self->options & OPTIONS_NON_DIRECTORY_FILE ? 1 : 0;
 }
 
+sub requested_delete_on_close ($) {
+	my $self = shift;
+
+	return $self->options & OPTIONS_DELETE_ON_CLOSE ? 1 : 0;
+}
+
 1;
