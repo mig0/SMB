@@ -71,7 +71,10 @@ sub log ($$@) {
 	my $self = shift;
 	my $is_err = shift;
 	my $format = shift;
+
 	return if $self->disable_log;
+	$format =~ s/\r?\n$//;
+
 	print sprintf("%s $format\n", $is_err ? '!' : '*', @_);
 }
 
@@ -125,9 +128,10 @@ sub parse_share_uri ($$) {
 
 our %dump_seen;
 our $dump_is_newline = 1;
-our $dump_level_limit = 7;
-our $dump_array_limit = 20;
-our $dump_string_limit = 50;
+our $dump_level_limit  = $ENV{DUMP_FULLY} || $ENV{DUMP_DEPTH_FULLY}  ? 100 : 8;
+our $dump_array_limit  = $ENV{DUMP_FULLY} || $ENV{DUMP_ARRAY_FULLY}  ? 10000 : 24;
+our $dump_string_limit = $ENV{DUMP_FULLY} || $ENV{DUMP_STRING_FULLY} ? 100000 : 60;
+our $dump_compress_array_elems = $ENV{DUMP_FULLY} || $ENV{DUMP_ARRAY_FULLY} ? 0 : 1;
 
 sub _dump_prefix ($) {
 	my $level = shift;
@@ -147,6 +151,8 @@ sub _dump_eol () {
 sub dump_string ($) {
 	my $value = shift;
 
+	my $quote_ch = $value =~ /"/ && $value !~ /'/ ? "'" : '"';
+
 	my $len = length($value);
 	if ($len > $dump_string_limit) {
 		my $llen = length($len);
@@ -154,10 +160,10 @@ sub dump_string ($) {
 			"..+" . ($len - $dump_string_limit + 3 + $llen);
 	}
 
-	$value =~ s/([\\"])/\\$1/g;
+	$value =~ s/([\\$quote_ch])/\\$1/g;
 	$value =~ s/([^ -\x7e])/sprintf("\\x%02x", ord($1))/ge;
 
-	return $value;
+	return "$quote_ch$value$quote_ch";
 }
 
 sub dump_value ($) {
@@ -174,8 +180,8 @@ sub dump_value ($) {
 
 	if (! $type) {
 		$dump .= defined $value
-			? $value =~ /^-?\d+$/ ||$inline == 2 && $value =~ /^-?\w+$/
-				? $value : '"' . dump_string($value) . '"'
+			? $value =~ /^-?\d+(?:\.\d+)?$/ || $inline == 2 && $value =~ /^-?\w+$/
+				? $value : dump_string($value)
 			: 'undef';
 	} elsif ($type eq 'ARRAY') {
 		if ($is_seen) {
@@ -185,10 +191,11 @@ sub dump_value ($) {
 			my @array = @$value > $dump_array_limit ? (@$value)[0 .. $dump_array_limit - 2] : @$value;
 			my $prev_elem = '';
 			foreach (@array) {
-				# compress equal consecutive elements
+				# compress equal consecutive elements (does not look too good for non scalar elems)
 				my $elem = &dump_value($_, $level + 1, 1);
-				if ($elem eq $prev_elem) {
-					$dump =~ s/^(\s+)(?:\()?(.*?)(?:\) x (\d+))?,$(\n)\z/my $c = ($3 || 1) + 1; "$1($2) x $c," . _dump_eol()/me;
+				if ($dump_compress_array_elems && $elem eq $prev_elem) {
+					my ($elem_without_indent) = $elem =~ /^\s*(.*?)\s*$/s;
+					$dump =~ s/^(\s+)(?:\()?(\Q$elem_without_indent\E)(?:\) x (\d+))?,$(\n)\z/my $c = ($3 || 1) + 1; "$1($2) x $c," . _dump_eol()/me;
 					next;
 				}
 				$dump .= _dump_prefix($level + 1);
@@ -233,6 +240,8 @@ sub dump_value ($) {
 	} elsif ($type eq 'SCALAR') {
 		$dump .= "\\";
 		$dump .= &dump_value($$value, $level + 1, 1);
+	} elsif ($type eq 'JSON::PP::Boolean') {
+		$dump .= $$value;  # 0 or 1
 	} else {
 		$dump .= "$type ";
 		my $native_type;
@@ -250,14 +259,13 @@ sub dump_value ($) {
 	$dump .= _dump_eol() unless $inline;
 
 	return $dump;
-
 }
 
 sub dump ($;$) {
 	my $self = shift;
-	my $level = 0;
+	my $value = @_ ? shift : $self;
 
-	my $dump = dump_value($self);
+	my $dump = dump_value($value);
 
 	%dump_seen = ();
 
