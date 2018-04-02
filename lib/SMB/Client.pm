@@ -29,6 +29,7 @@ use SMB::v2::Command::Close;
 use SMB::v2::Command::QueryDirectory;
 use SMB::v2::Command::Read;
 use SMB::v2::Command::Write;
+use SMB::v2::Command::SetInfo;
 use SMB::Tree;
 
 sub new ($$%) {
@@ -277,10 +278,13 @@ sub remove_file ($$$$) {
 	my $file = shift // return $self->err("No file to remove");
 	my $recursive = shift;
 
-	my $options = ($file->is_directory
+	my $remove_using_setinfo = $ENV{SMB_CLIENT_REMOVE_FILE_USING_SETINFO};
+
+	my $options = $file->is_directory
 		? SMB::v2::Command::Create::OPTIONS_DIRECTORY_FILE
-		: SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE
-	) | SMB::v2::Command::Create::OPTIONS_DELETE_ON_CLOSE;
+		: SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE;
+	$options |= SMB::v2::Command::Create::OPTIONS_DELETE_ON_CLOSE
+		unless $remove_using_setinfo;
 	my $response = $self->process_request($connection, 'Create',
 		file_name => $file->name,
 		options => $options,
@@ -288,6 +292,17 @@ sub remove_file ($$$$) {
 	);
 	return unless $response && $response->is_success;
 	my $fid = $response->fid;
+
+	if ($remove_using_setinfo) {
+		$response = $self->process_request($connection, 'SetInfo',
+			fid => $fid,
+			type => SMB::v2::Command::SetInfo::TYPE_FILE,
+			level => SMB::v2::Command::SetInfo::FILE_LEVEL_DISPOSITION,
+			buffer => chr(SMB::v2::Command::SetInfo::FILE_DISPOSITION_DELETE_ON_CLOSE),
+		);
+		return unless $response && $response->is_success;
+	}
+
 	if ($recursive && $file->is_directory) {
 		my @files = ();
 		while (1) {
@@ -305,9 +320,11 @@ sub remove_file ($$$$) {
 			# TODO: consider to have full file name already on parse-response
 			$file->name("$dirname\\" . $file->name) if $dirname;
 			next if $file->name =~ m/(^|\\)\.\.?$/;
-			$self->remove_file($connection, $file, 1);
+			return $self->err("Failed to remove inner ". $file->name)
+				unless $self->remove_file($connection, $file, 1);
 		}
 	}
+
 	$self->process_request($connection, 'Close',
 		fid => $fid,
 	);

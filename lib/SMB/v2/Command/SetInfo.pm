@@ -42,6 +42,8 @@ use constant {
 
 	FS_LEVEL_CONTROLINFORMATION  => 6,
 	FS_LEVEL_OBJECTIDINFORMATION => 8,
+
+	FILE_DISPOSITION_DELETE_ON_CLOSE => 0x1,
 };
 
 sub init ($) {
@@ -52,7 +54,6 @@ sub init ($) {
 		buffer     => undef,
 		fid        => 0,
 		openfile   => undef,
-		files      => undef,
 	)
 }
 
@@ -61,9 +62,7 @@ sub parse ($$) {
 	my $parser = shift;
 
 	if ($self->is_response) {
-		my $offset = $parser->uint16;
-		my $length = $parser->uint32;
-		$self->buffer($parser->bytes($length));
+		# empty
 	} else {
 		$self->type($parser->uint8);
 		$self->level($parser->uint8);
@@ -85,17 +84,13 @@ sub pack ($$) {
 	my $buffer = $self->buffer;
 
 	if ($self->is_response) {
-		$packer
-			->uint16($packer->diff('smb-header') + 6)
-			->uint32(defined $buffer ? length($buffer) : 0)
-			->bytes($buffer // '')
-		;
+		# empty
 	} else {
 		$packer
 			->uint8($self->type)
 			->uint8($self->level)
 			->uint32(defined $buffer ? length($buffer) : 0)
-			->uint16($packer->diff('smb-header') + 32)
+			->uint16($packer->diff('smb-header') + 32 - 8)
 			->uint16(0)  # reserved
 			->uint32($self->additional)
 			->fid2($self->fid || die "No fid set")

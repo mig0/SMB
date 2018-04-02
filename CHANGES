@@ -5,6 +5,8 @@ Releases of SMB-Perl library and main changes.
 * Added classes for v2 commands QueryInfo and SetInfo.
 * Added more documentation.
 * Added new client functionality: recursive remove.
+* Added alternative remove functionality in client;
+  set env $SMB_CLIENT_REMOVE_FILE_USING_SETINFO for this.
 
 0.06 - 2014-08-19
 
