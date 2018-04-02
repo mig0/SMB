@@ -71,24 +71,25 @@ __END__
 
 =head1 NAME
 
-SMB::OpenFile - A state of opening local file for SMB
+SMB::OpenFile - A state of opening local or remote file for SMB
 
 =head1 SYNOPSIS
 
-	use SMB::OpenFile;
+	use SMB::File;
 
+	# for server, on Create request
 	my $file = SMB::File->new(
 		name => $create_request->file_name,
 		share_root => $tree->root,
 		is_ipc => $tree->is_ipc,
 	);
-	say $file->name;      # "john\\file.txt"
-	say $file->filename;  # "/my/shares/Users/john/file.txt"
+	my $openfile = $file->supersede;  # or: create, open, overwrite etc
+	$openfile->close;
+	$openfile = $file->open_by_disposition(SMB::File::DISPOSITION_OPEN_IF);
 
 
-	# acquire remote file object(s) for client
+	# for client, on Create response
 	my $file = $create_response->openfile->file;
-	my @files = @{$querydirectory_response->files};
 
 =head1 DESCRIPTION
 

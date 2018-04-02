@@ -471,7 +471,8 @@ optional keys "pattern" (default "*") and "start_idx" (default 0).
 
 =head1 FUNCTIONS
 
-No functions are exported. They they may be called as SMB::File::FUNC_NAME.
+None of the following functions are exported. But they may be called as
+SMB::File::FUNC_NAME.
 
 =over 4
 
