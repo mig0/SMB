@@ -128,15 +128,11 @@ my %commands = (
 	},
 	get => sub {
 		return unless check_tree();
-		$tree->dnload(prompt("File to get"), shift @args);
+		$tree->dnload(prompt("File to download"), shift @args);
 	},
 	put => sub {
 		return unless check_tree();
-		$tree->upload(prompt("File to put"), shift @args);
-	},
-	copy => sub {
-		return unless check_tree();
-		$tree->copy(prompt("File to copy"), prompt("New file name"));
+		$tree->upload(prompt("File to upload"), shift @args);
 	},
 	del => sub {
 		return unless check_tree();
@@ -146,11 +142,15 @@ my %commands = (
 	rmdir => sub {
 		return unless check_tree();
 		my $recursive = @args && $args[0] eq '-r' && shift @args && 1;
-		$tree->remove({ recursive => $recursive }, prompt("File to remove"), 1);
+		$tree->remove({ recursive => $recursive }, prompt("Dir to remove"), 1);
 	},
 	rename => sub {
 		return unless check_tree();
 		$tree->rename(prompt("File to rename"), prompt("New file name"));
+	},
+	copy => sub {
+		return unless check_tree();
+		$tree->copy(prompt("File to copy"), prompt("New file name"));
 	},
 	help => sub {
 		my $help = qq{
@@ -171,6 +171,7 @@ my %commands = (
 			del [-r] FILE remove file
 			rmdir [-r] D  remove dir
 			rename F1 F2  rename file
+			copy F1 F2    copy file
 
 			quit          exit the client (close all connections)
 		};
