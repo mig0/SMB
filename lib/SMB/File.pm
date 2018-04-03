@@ -287,14 +287,14 @@ sub find_files ($%) {
 	my $pattern = $params{pattern} || '*';
 	my $want_all = $pattern eq '*';
 	my $start_idx = $params{start_idx} || 0;
-	my $files = $self->{files};  # cached
+	my $files = $self->{files};  # cached for fragmented queries
 	my $name = $self->name;
 
 	# fix pattern if needed
 	my $pattern0 = $pattern;
 	$pattern0 =~ s/^\*/{.*,*}/;
 
-	unless ($want_all && $files) {
+	if (!$files || $start_idx == 0) {
 		my @filenames = map { -e $_ && basename($_) } bsd_glob($self->filename . "/$pattern0", GLOB_NOCASE | GLOB_BRACE);
 		$self->msg("Find [$self->{filename}/$pattern] - " . scalar(@filenames) . " files");
 		$files = [ map { SMB::File->new(
