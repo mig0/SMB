@@ -148,7 +148,8 @@ my %commands = (
 	},
 	rename => sub {
 		return unless check_tree();
-		$tree->rename(prompt("File to rename"), prompt("New file name"));
+		my $force = @args && $args[0] eq '-f' && shift @args && 1;
+		$tree->rename({ force => $force }, prompt("File to rename"), prompt("New file name"));
 	},
 	copy => sub {
 		return unless check_tree();
@@ -172,7 +173,7 @@ my %commands = (
 			put SRC [DST] upload local file SRC file to server
 			del [-r] FILE remove file
 			rmdir [-r] D  remove dir (use -r to remove recursively)
-			rename F1 F2  rename file
+			rename F1 F2  rename file (add -f to force)
 			copy F1 F2    copy file
 
 			quit          exit the client (close all connections)
@@ -189,6 +190,8 @@ my %aliases = (
 	upload => 'put',
 	rm => 'del',
 	remove => 'del',
+	mv => 'rename',
+	move => 'rename',
 	cp => 'copy',
 	exit => 'quit',
 );
@@ -197,7 +200,7 @@ print "Connected to $share_uri. Enter 'help' to list commands.\n";
 
 while (1) {
 	my $dir = format_cwd();
-	my $cmd = prompt("smb:$dir> ", 2) // last;
+	my $cmd = prompt("smb:$dir> ", 3) // last;
 	$cmd = $aliases{$cmd} if $aliases{$cmd};
 	last if $cmd eq 'quit';
 	my $func = $commands{$cmd};

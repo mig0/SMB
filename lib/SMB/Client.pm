@@ -427,6 +427,45 @@ sub remove_file ($$$$) {
 	return 1;
 }
 
+sub rename_file ($$$$;$) {
+	my $self = shift;
+	my $connection = shift;
+	my $filename1 = shift // return $self->err("No old filename to rename");
+	my $filename2 = shift // return $self->err("No new filename to rename");
+	my $force = shift || 0;
+
+	my $response = $self->process_request($connection, 'Create',
+		file_name => $filename1,
+		options => 0,
+		access_mask => 0x10081,
+	);
+	return unless $response && $response->is_success;
+	my $fid = $response->fid;
+
+	my $rename_struct = SMB::Packer->new
+		->uint8($force ? 1 : 0)
+		->zero(7)    # reserved
+		->zero(8)    # root dir handle
+		->uint16(length($filename2) * 2)
+		->uint16(0)  # reserved
+		->str($filename2);
+
+	$response = $self->process_request($connection, 'SetInfo',
+		fid => $fid,
+		type => SMB::v2::Command::SetInfo::TYPE_FILE,
+		level => SMB::v2::Command::SetInfo::FILE_LEVEL_RENAME,
+		buffer => $rename_struct->data,
+	);
+	return unless $response && $response->is_success;
+
+	$self->process_request($connection, 'Close',
+		fid => $fid,
+	);
+	return unless $response && $response->is_success;
+
+	return 1;
+}
+
 sub perform_tree_command ($$$@) {
 	my $self = shift;
 	my $tree = shift;
@@ -485,6 +524,16 @@ sub perform_tree_command ($$$@) {
 		my $file = SMB::File->new(name => $filename, is_directory => $is_dir);
 
 		return $self->remove_file($connection, $file, $recursive);
+	} elsif ($command eq 'rename') {
+		my $filename1 = shift // '';
+		return $self->err("No filename1") if $filename1 eq '';
+		$filename1 = _normalize_path($filename1, $tree->cwd, 1);
+		my $filename2 = shift // '';
+		return $self->err("No filename2") if $filename2 eq '';
+		$filename2 = _normalize_path($filename2, $tree->cwd, 1);
+		my $force = $options{force};
+
+		return $self->rename_file($connection, $filename1, $filename2, $force);
 	} elsif ($command eq 'copy') {
 		my $filename1 = shift // '';
 		return $self->err("No filename1") if $filename1 eq '';

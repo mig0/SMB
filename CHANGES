@@ -9,6 +9,7 @@ Releases of SMB-Perl library and main changes.
   set env $SMB_CLIENT_REMOVE_FILE_USING_SETINFO for this.
 * Added remove functionality in server (delete-on-close).
 * Added new client functionality: copy (using dnload+upload).
+* Added new client functionality: rename (with -f to force).
 
 0.06 - 2014-08-19
 
