@@ -307,6 +307,18 @@ sub find_files ($%) {
 	return $start_idx ? [ @{$files}[$start_idx .. (@$files - 1)] ] : $files;
 }
 
+sub remove ($) {
+	my $self = shift;
+
+	if ($self->is_directory) {
+		rmdir($self->filename);
+	} else {
+		unlink($self->filename);
+	}
+
+	return $! == 0;
+}
+
 1;
 
 __END__

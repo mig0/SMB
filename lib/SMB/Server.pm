@@ -190,8 +190,8 @@ sub on_command ($$$) {
 			if ($openfile->delete_on_close) {
 				my $filename = $openfile->file->filename;
 				$self->msg("Removing $filename");
-				unlink($filename) or
-					$self->err("Failed to unlink $filename: $!");
+				$openfile->file->remove()
+					or $self->err("Failed to remove $filename: $!");
 			}
 			$openfile->close;
 			delete $connection->{openfiles}{@$fid};
