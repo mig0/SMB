@@ -74,6 +74,17 @@ sub set_status ($$) { $_[0]->header->status($_[1]); }
 sub is_success ($) { $_[0]->status == 0 }
 sub is_error   ($) { $_[0]->status != 0 }
 
+my %STATUS_NAMES = do {
+	no strict 'refs';
+	map { "SMB::$_"->() => $_ } grep /^STATUS_/, keys %SMB::
+};
+
+sub status_name ($) {
+	my $status = $_[0]->header->status;
+
+	return $STATUS_NAMES{$status} || sprintf "%x", $status;
+}
+
 # stub methods to be overloaded
 
 sub parse ($$%) {

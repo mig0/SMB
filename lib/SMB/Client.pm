@@ -147,7 +147,7 @@ sub process_request ($$$%) {
 
 	my $response = $self->wait_for_response($connection);
 
-	warn "SMB Error on $command_name response: " . ($response ? sprintf "%x", $response->status : "internal") . "\n"
+	warn "SMB Error on $command_name response: " . ($response ? $response->status_name : "internal") . "\n"
 		if !$no_warn && (!$response || $response->is_error);
 
 	return $response;
