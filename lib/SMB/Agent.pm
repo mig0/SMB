@@ -31,6 +31,7 @@ sub new ($%) {
 
 	$options{quiet}   ||= 0;
 	$options{verbose} ||= 0;
+	($options{log_level} ||= SMB::LOG_LEVEL_DEBUG) += $options{verbose} - $options{quiet};
 	$options{unique_conn_addr} ||= 0;
 
 	my $self = $class->SUPER::new(
@@ -74,8 +75,7 @@ sub add_connection ($$$%) {
 
 	my $connection = SMB::Connection->new(
 		$socket, $id,
-		quiet     => $self->quiet,
-		verbose   => $self->verbose,
+		log_level => $self->log_level,
 		%options,
 	) or return;
 	$self->socket_pool->add($socket);

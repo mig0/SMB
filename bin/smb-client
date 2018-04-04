@@ -13,6 +13,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use SMB::Client;
 
+my $quiet = 0;
 my $verbose = 0;
 my $username = $ENV{USER} || $ENV{LOGNAME} || 'guest';
 
@@ -25,7 +26,8 @@ sub show_usage (;$) {
 
 		Options:
 			-h --help            show this usage
-			-v --verbose         print more messages
+			-q --quiet           do not show any errors
+			-v --verbose         print more messages (multiple)
 			-U --username u[%p]  SMB username and password (prompted if absent)
 	};
 	$usage =~ s/^\n//; $usage =~ s/^\t\t?//mg;
@@ -35,6 +37,7 @@ sub show_usage (;$) {
 
 GetOptions(
 	'h|help'       => sub { show_usage(0) },
+	'q|quiet+'     => \$quiet,
 	'v|verbose+'   => \$verbose,
 	'U|username=s' => \$username,
 ) or show_usage(1);
@@ -88,7 +91,9 @@ my $client = SMB::Client->new(
 	$share_uri,
 	username => $username,
 	password => $password,
+	quiet    => $quiet,
 	verbose  => $verbose,
+	log_level => SMB::LOG_LEVEL_INFO,
 );
 
 my $tree = $client->connect_tree

@@ -55,12 +55,21 @@ use constant {
 	STATUS_NOT_A_REPARSE_POINT      => 0xc0000275,
 };
 
+use constant {
+	LOG_LEVEL_NONE  => 0,
+	LOG_LEVEL_ERROR => 1,
+	LOG_LEVEL_INFO  => 2,
+	LOG_LEVEL_DEBUG => 3,
+	LOG_LEVEL_TRACE => 4,
+};
+
 sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
+	$options{log_level} ||= LOG_LEVEL_INFO;
+
 	my $self = {
-		disable_log => $options{quiet} ? 1 : 0,
 		%options,
 	};
 
@@ -69,34 +78,37 @@ sub new ($%) {
 
 sub log ($$@) {
 	my $self = shift;
-	my $is_err = shift;
+	my $level = shift || LOG_LEVEL_INFO;
 	my $format = shift;
 
-	return if $self->disable_log;
+	return if $level > $self->log_level;
 	$format =~ s/\r?\n$//;
 
-	print sprintf("%s $format\n", $is_err ? '!' : '*', @_);
+	print sprintf("%s $format\n", $level == LOG_LEVEL_ERROR ? '!' : '*', @_);
 }
 
-sub msg ($@) { shift()->log(0, @_) }
-sub err ($@) { shift()->log(1, @_); return }
+sub err ($@) { shift()->log(LOG_LEVEL_ERROR, @_); return }
+sub msg ($@) { shift()->log(LOG_LEVEL_INFO,  @_) }
+sub dbg ($@) { shift()->log(LOG_LEVEL_DEBUG, @_) }
+sub trc ($@) { shift()->log(LOG_LEVEL_TRACE, @_) }
 
 my $MAX_DUMP_BYTES = 8 * 1024;
 my $dump_line_format = "%03x | 00 53 54 52 49 4E 47 aa  aa aa aa aa aa aa       | _STRING. ......   |\n";
 
-sub mem ($$;$) {
+sub mem ($$;$$) {
 	my $self = shift;
 	my $data = shift;
 	my $label = shift || "Data dump";
-	return if $self->disable_log;
+	my $level = shift || LOG_LEVEL_TRACE;
+	return if $level > $self->log_level;
 
 	if (!defined $data) {
-		$self->msg("$label (undef)");
+		$self->log($level, "$label (undef)");
 		return;
 	}
 
 	my $len = length($data);
-	$self->msg(sprintf("%s (%lu bytes%s):", $label, $len, $len > $MAX_DUMP_BYTES ? ", shorten" : ""), @_);
+	$self->log($level, sprintf("%s (%lu bytes%s):", $label, $len, $len > $MAX_DUMP_BYTES ? ", shorten" : ""), @_);
 	$len = $MAX_DUMP_BYTES if $len > $MAX_DUMP_BYTES;
 
 	for (my $n = 0; $n < ($len + 15) / 16; $n++) {
@@ -417,7 +429,6 @@ in bytes and then a nice memory dump, looking like:
 Returns a neat object's presentation as a multi-line string, like:
 
  SMB::v2::Command::Close {
-     disable_log => 0,
      fid => [
          2,
          0,
@@ -428,8 +439,8 @@ Returns a neat object's presentation as a multi-line string, like:
          code => 6,
          credit_charge => 1,
          credits => 7802,
-         disable_log => 0,
          flags => 0,
+         log_level => 2,
          mid => 15,
          signature => [
              ("\x00") x 16,
@@ -439,6 +450,7 @@ Returns a neat object's presentation as a multi-line string, like:
          tid => 2,
          uid => 1,
      },
+     log_level => 2,
      name => "Close",
      openfile => undef,
      smb => 2,

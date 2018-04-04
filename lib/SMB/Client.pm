@@ -37,9 +37,6 @@ sub new ($$%) {
 	my $share_uri = shift;
 	my %options = @_;
 
-	my $verbose = delete $options{verbose} || 0;
-	$options{quiet} = 1 unless $verbose;
-
 	my $self = $class->SUPER::new(
 		%options,
 		server_id => 0,  # running index
@@ -543,7 +540,6 @@ sub perform_tree_command ($$$@) {
 		$filename2 = _normalize_path($filename2, $tree->cwd, 1);
 
 		my $tmp_filename = "/var/tmp/copy-$$";
-		$self->msg("filename1=$filename1 filename2=$filename2 tmp_filename=$tmp_filename");
 		my $success =
 			$self->dnload_file($connection, $filename1, $tmp_filename) &&
 			$self->upload_file($connection, $tmp_filename, $filename2);
