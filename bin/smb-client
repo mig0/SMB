@@ -57,6 +57,7 @@ $Term::ReadLine::Gnu::Attribs{term_set} = [ "\033[1;36m", "\033[m", "\033[1;31m"
 	if @Term::ReadLine::TermCap::rl_term_set;
 warn "# Consider to install perl(Term::ReadLine::Gnu) to get history.\n"
 	if $verbose && !%Term::ReadLine::Gnu::Attribs;
+$SIG{INT} = sub { die "Terminated by user\n"; };
 
 my @args;
 sub prompt ($;$$) {
