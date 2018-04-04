@@ -186,6 +186,7 @@ my %aliases = (
 	download => 'get',
 	upload => 'put',
 	rm => 'del',
+	cp => 'copy',
 	exit => 'quit',
 );
 

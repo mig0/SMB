@@ -272,6 +272,100 @@ sub _basename ($;$) {
 	return $path =~ /.*\Q$delim\E(.*)/ ? $1 : $path;
 }
 
+sub dnload_file ($$$$) {
+	my $self = shift;
+	my $connection = shift;
+	my $filename = shift // return $self->err("No remote file name to download");
+	my $dst_filename = shift // return $self->err("No local file name to save");
+
+	my $response = $self->process_request($connection, 'Create',
+		file_name => $filename,
+	);
+	return unless $response && $response->is_success;
+
+	my $file = $response->openfile->file;
+	my $fid = $response->fid;
+	my $remaining = $file->end_of_file;
+	my $time = $file->mtime;
+	my $content = '';
+	my $offset = 0;
+	while ($remaining) {
+		my $length = $remaining >= 65536 ? 65536 : $remaining;
+		$remaining -= $length;
+		$response = $self->process_request($connection, 'Read',
+			fid => $fid,
+			offset => $offset,
+			length => $length,
+			remaining_bytes => $remaining,
+		);
+		return unless $response && $response->is_success;
+		my $read = $response->length;
+		return $self->err("Unexpected $read bytes read instead of $length at offset $offset")
+			if $read != $length;
+		$content .= $response->buffer;
+		$offset += $length;
+	}
+	$self->process_request($connection, 'Close',
+		fid => $fid,
+	);
+
+	open DST, '>', $dst_filename
+		or return $self->err("Can't open $dst_filename for write: $!");
+	print DST $content
+		or return $self->err("Can't write content to $dst_filename: $!");
+	close DST
+		or return $self->err("Can't close $dst_filename after write: $!");
+
+	# consider to set $time on file
+	return 1;
+}
+
+sub upload_file ($$$$) {
+	my $self = shift;
+	my $connection = shift;
+	my $filename = shift // return $self->err("No local file name to load");
+	my $dst_filename = shift // return $self->err("No remote file name to upload");
+
+	local $/ = undef;
+	open SRC, '<', $filename
+		or return $self->err("Can't open $filename for read: $!");
+	my $content = <SRC>
+		// return $self->err("Can't read content from $filename: $!");
+	close SRC
+		or return $self->err("Can't close $filename after read: $!");
+
+	my $response = $self->process_request($connection, 'Create',
+		file_name => $dst_filename,
+		options => SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE,
+		access_mask => 0x12019f,
+		disposition => SMB::File::DISPOSITION_OVERWRITE_IF,
+	);
+	return unless $response && $response->is_success;
+	my $fid = $response->fid;
+	my $remaining = length($content);
+	my $offset = 0;
+	while ($remaining) {
+		my $length = $remaining >= 65536 ? 65536 : $remaining;
+		$remaining -= $length;
+		$response = $self->process_request($connection, 'Write',
+			fid => $fid,
+			offset => $offset,
+			remaining_bytes => $remaining,
+			buffer => substr($content, $offset, $length),
+		);
+		return unless $response && $response->is_success;
+		my $written = $response->length;
+		return $self->err("Unexpected $written bytes written instead of $length at offset $offset")
+			if $written != $length;
+		$offset += $length;
+	}
+	$self->process_request($connection, 'Close',
+		fid => $fid,
+	);
+
+	return 1;
+}
+
 sub remove_file ($$$$) {
 	my $self = shift;
 	my $connection = shift;
@@ -373,89 +467,14 @@ sub perform_tree_command ($$$@) {
 		$filename = _normalize_path($filename, $tree->cwd, 1);
 		my $dst_filename = _normalize_path(shift || _basename($filename, 1), '.');
 
-		my $response = $self->process_request($connection, 'Create',
-			file_name => $filename,
-		);
-		return unless $response && $response->is_success;
-		my $file = $response->openfile->file;
-		my $fid = $response->fid;
-		my $remaining = $file->end_of_file;
-		my $time = $file->mtime;
-		my $content = '';
-		my $offset = 0;
-		while ($remaining) {
-			my $length = $remaining >= 65536 ? 65536 : $remaining;
-			$remaining -= $length;
-			$response = $self->process_request($connection, 'Read',
-				fid => $fid,
-				offset => $offset,
-				length => $length,
-				remaining_bytes => $remaining,
-			);
-			return unless $response && $response->is_success;
-			my $read = $response->length;
-			return $self->err("Unexpected $read bytes read instead of $length at offset $offset")
-				if $read != $length;
-			$content .= $response->buffer;
-			$offset += $length;
-		}
-		$self->process_request($connection, 'Close',
-			fid => $fid,
-		);
-
-		open DST, '>', $dst_filename
-			or return $self->err("Can't open $dst_filename for write: $!");
-		print DST $content
-			or return $self->err("Can't write content to $dst_filename: $!");
-		close DST
-			or return $self->err("Can't close $dst_filename after write: $!");
-
-		# consider to set $time on file
-		return 1;
+		return $self->dnload_file($connection, $filename, $dst_filename);
 	} elsif ($command eq 'upload') {
 		my $filename = shift // '';
 		return $self->err("No filename") if $filename eq '';
 		$filename = _normalize_path($filename, '.');
 		my $dst_filename = _normalize_path(shift || _basename($filename), $tree->cwd, 1);
 
-		local $/ = undef;
-		open SRC, '<', $filename
-			or return $self->err("Can't open $filename for read: $!");
-		my $content = <SRC>
-			// return $self->err("Can't read content from $filename: $!");
-		close SRC
-			or return $self->err("Can't close $filename after read: $!");
-
-		my $response = $self->process_request($connection, 'Create',
-			file_name => $dst_filename,
-			options => SMB::v2::Command::Create::OPTIONS_NON_DIRECTORY_FILE,
-			access_mask => 0x12019f,
-			disposition => SMB::File::DISPOSITION_OVERWRITE_IF,
-		);
-		return unless $response && $response->is_success;
-		my $fid = $response->fid;
-		my $remaining = length($content);
-		my $offset = 0;
-		while ($remaining) {
-			my $length = $remaining >= 65536 ? 65536 : $remaining;
-			$remaining -= $length;
-			$response = $self->process_request($connection, 'Write',
-				fid => $fid,
-				offset => $offset,
-				remaining_bytes => $remaining,
-				buffer => substr($content, $offset, $length),
-			);
-			return unless $response && $response->is_success;
-			my $written = $response->length;
-			return $self->err("Unexpected $written bytes written instead of $length at offset $offset")
-				if $written != $length;
-			$offset += $length;
-		}
-		$self->process_request($connection, 'Close',
-			fid => $fid,
-		);
-
-		return 1;
+		return $self->upload_file($connection, $filename, $dst_filename);
 	} elsif ($command eq 'remove') {
 		my $filename = shift // '';
 		return $self->err("No filename") if $filename eq '';
@@ -466,6 +485,22 @@ sub perform_tree_command ($$$@) {
 		my $file = SMB::File->new(name => $filename, is_directory => $is_dir);
 
 		return $self->remove_file($connection, $file, $recursive);
+	} elsif ($command eq 'copy') {
+		my $filename1 = shift // '';
+		return $self->err("No filename1") if $filename1 eq '';
+		$filename1 = _normalize_path($filename1, $tree->cwd, 1);
+		my $filename2 = shift // '';
+		return $self->err("No filename2") if $filename2 eq '';
+		$filename2 = _normalize_path($filename2, $tree->cwd, 1);
+
+		my $tmp_filename = "/var/tmp/copy-$$";
+		$self->msg("filename1=$filename1 filename2=$filename2 tmp_filename=$tmp_filename");
+		my $success =
+			$self->dnload_file($connection, $filename1, $tmp_filename) &&
+			$self->upload_file($connection, $tmp_filename, $filename2);
+		unlink $tmp_filename;
+
+		return $success;
 	}
 
 	return;
