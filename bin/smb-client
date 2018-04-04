@@ -52,6 +52,8 @@ $Term::ReadLine::Gnu::Attribs{term_set} = [ "\033[1;36m", "\033[m", "\033[1;31m"
 	if %Term::ReadLine::Gnu::Attribs;
 @Term::ReadLine::TermCap::rl_term_set = ("\033[1;36m", "\033[m", "\033[1;31m", "\033[m")
 	if @Term::ReadLine::TermCap::rl_term_set;
+warn "# Consider to install perl(Term::ReadLine::Gnu) to get history.\n"
+	if $verbose && !%Term::ReadLine::Gnu::Attribs;
 
 my @args;
 sub prompt ($;$$) {
@@ -157,7 +159,7 @@ my %commands = (
 			Operations available:
 
 			connect ADDR  connect to server, ADDR is host[:port]
-			disconnect    disconnect of the current connection
+			disconnect    disconnect from the current server
 			tree-connect  connect to share, argument syntax //host[:port]/share
 			tree-disconn  disconnect from the current share
 
@@ -169,7 +171,7 @@ my %commands = (
 			get SRC [DST] download remote file SRC from server
 			put SRC [DST] upload local file SRC file to server
 			del [-r] FILE remove file
-			rmdir [-r] D  remove dir
+			rmdir [-r] D  remove dir (use -r to remove recursively)
 			rename F1 F2  rename file
 			copy F1 F2    copy file
 
@@ -186,6 +188,7 @@ my %aliases = (
 	download => 'get',
 	upload => 'put',
 	rm => 'del',
+	remove => 'del',
 	cp => 'copy',
 	exit => 'quit',
 );
