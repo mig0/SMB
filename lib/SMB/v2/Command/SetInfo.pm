@@ -99,6 +99,27 @@ sub pack ($$) {
 	}
 }
 
+sub requested_rename_info ($) {
+	my $self = shift;
+
+	return unless
+		$self->type == TYPE_FILE &&
+		$self->level == FILE_LEVEL_RENAME;
+
+	my $parser = SMB::Parser->new($self->buffer);
+	my $replace = $parser->uint8;
+	$parser->skip(7);  # reserved
+	$parser->skip(8);  # root dir handle
+	my $new_name_len = $parser->uint16;
+	$parser->skip(2);  # reserved
+	my $new_name = $parser->str($new_name_len);
+
+	return {
+		new_name => $new_name,
+		replace  => $replace,
+	};
+}
+
 sub requested_delete_on_close ($) {
 	my $self = shift;
 

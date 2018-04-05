@@ -278,6 +278,25 @@ sub open_by_disposition ($$) {
 	return;
 }
 
+sub normalize_name_in_share ($$) {
+	my $self = shift;
+	my $name = shift // die "Missing file name to normalize in share\n";
+
+	my $root = $self->share_root;
+	return unless $root;
+
+	$name =~ s=\\=\/=g;
+	$name =~ s=/{2,}=/=g;
+	$name =~ s=^/|/$==;
+	$name =~ s=(^|/)\.(/|$)=$1=g;
+	while ($name =~ s=(^|/)(?!\.\./)[^/]+/\.\./=$1=) {}
+
+	# refuse to go below the root
+	return if $name =~ m=^\.\.?(/|$)=;
+
+	return $name eq '' ? $root : "$root/$name";
+}
+
 sub find_files ($%) {
 	my $self = shift;
 	my %params = @_;
@@ -317,6 +336,28 @@ sub remove ($) {
 	}
 
 	return $! == 0;
+}
+
+sub rename ($$;$) {
+	my $self = shift;
+	my $new_filename = shift // die "Missing new filename to rename\n";
+	my $replace = shift // 0;
+
+	my $filename = $self->filename;
+
+	return (SMB::STATUS_OBJECT_NAME_NOT_FOUND, "Bad name [$new_filename]")
+		unless $new_filename = $self->normalize_name_in_share($new_filename);
+	return (SMB::STATUS_NO_SUCH_FILE, "No such file $filename")
+		unless -e $filename;
+	return (SMB::STATUS_SHARING_VIOLATION, "New name can't be existing directory")
+		if -d $new_filename;
+	return (SMB::STATUS_OBJECT_NAME_COLLISION, "Already exists")
+		if !$replace && -e $new_filename;
+
+	return (SMB::STATUS_ACCESS_DENIED, "Failed to rename")
+		unless rename($self->filename, $new_filename);
+
+	return (SMB::STATUS_SUCCESS);
 }
 
 1;

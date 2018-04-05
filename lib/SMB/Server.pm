@@ -197,6 +197,16 @@ sub on_command ($$$) {
 			delete $connection->{openfiles}{@$fid};
 		}
 		elsif ($command->is('SetInfo')) {
+			my $rename_info = $command->requested_rename_info;
+			if ($rename_info) {
+				my $filename1 = $openfile->file->filename;
+				my $filename2 = $rename_info->{new_name} // die;
+				my $replace   = $rename_info->{replace} // die;
+				$self->msg("Renaming $filename1 to $filename2");
+				($error, my $message) = $openfile->file->rename($filename2);
+				$self->err("Failed to rename $filename1 to $filename2: $message")
+					if $error;
+			}
 			$openfile->delete_on_close(1) if $command->requested_delete_on_close;
 		}
 		elsif ($command->is('Read')) {

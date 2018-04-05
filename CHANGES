@@ -10,6 +10,7 @@ Releases of SMB-Perl library and main changes.
 * Added remove functionality in server (delete-on-close).
 * Added new client functionality: copy (using dnload+upload).
 * Added new client functionality: rename (with -f to force).
+* Added rename functionality in server.
 * Added concept of log level to classes. NONE, ERROR, INFO, DEBUG, TRACE.
 * Improved output of client, now errors are shown even without --verbose.
 
