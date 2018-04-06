@@ -261,7 +261,9 @@ sub run ($) {
 			else {
 				my $connection = $self->get_connection($socket)
 					or die "Unexpected data on unmanaged $socket";
-				my $command = $self->recv_command($connection);
+				my $command = $socket->eof
+					? $connection->msg("Connection reset by peer")
+					: $self->recv_command($connection);
 				if (!$command) {
 					$self->on_disconnect($connection);
 					$self->delete_connection($connection);
