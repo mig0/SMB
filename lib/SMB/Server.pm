@@ -113,8 +113,12 @@ sub on_command ($$$) {
 	$command->{tree} = $tree if $tree;
 
 	if ($command->is_smb1) {
-		if ($command->is('Negotiate') && $command->supports_protocol(2)) {
-			$command = SMB::v2::Command::Negotiate->new_from_v1($command);
+		if ($command->is('Negotiate')) {
+			if ($command->supports_smb_dialect(0x0202)) {
+				$command = SMB::v2::Command::Negotiate->new_from_v1($command);
+			} else {
+				$self->err("Client does not support SMB2, and we do not support SMB1, stopping");
+			}
 		}
 	}
 

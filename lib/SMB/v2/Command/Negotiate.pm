@@ -133,10 +133,15 @@ sub pack ($$) {
 	}
 }
 
-sub supports_protocol ($$) {
+sub supports_smb_dialect ($$) {
 	my $self = shift;
+	my $dialect0 = shift || die;
 
-	return 1;
+	for my $dialect (@{$self->dialects}) {
+		return 1 if $dialect > $dialect0;
+	}
+
+	return 0;
 }
 
 1;

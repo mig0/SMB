@@ -43,10 +43,15 @@ sub parse ($$%) {
 	return $self;
 }
 
-sub supports_protocol ($$) {
+sub supports_smb_dialect ($$) {
 	my $self = shift;
+	my $dialect0 = shift;
 
-	return 1;
+	for (@{$self->dialect_names}) {
+		return 1 if /^SMB (\d+)\.[0?](\d{2}|\?\?)/ && ($1 << 8 + ($2 eq '??' ? 0 : $2)) > $dialect0;
+	}
+
+	return 0;
 }
 
 1;
