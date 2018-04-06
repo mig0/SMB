@@ -13,6 +13,7 @@ Releases of SMB-Perl library and main changes.
 * Added rename functionality in server.
 * Added concept of log level to classes. NONE, ERROR, INFO, DEBUG, TRACE.
 * Improved output of client, now errors are shown even without --verbose.
+* Fixed parsing of SMB1 header and actually parsed Negotiate request.
 
 0.06 - 2014-08-19
 

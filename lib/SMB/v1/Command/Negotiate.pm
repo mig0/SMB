@@ -20,9 +20,25 @@ use warnings;
 
 use parent 'SMB::v1::Command';
 
+sub init ($) {
+	$_[0]->set(
+		dialect_names => [],
+	);
+}
+
 sub parse ($$%) {
 	my $self = shift;
 	my $parser = shift;
+
+	if ($self->is_response) {
+		# unsupported
+	} else {
+		$parser->skip(1);  # word count
+		$self->dialect_names([
+			map { substr($_, 1) } grep { substr($_, 0, 1) eq "\x02" }
+				split("\x00", $parser->bytes($parser->uint16))
+		]);
+	}
 
 	return $self;
 }

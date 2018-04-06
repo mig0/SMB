@@ -301,6 +301,7 @@ sub parse ($$) {
 	my $flags2 = $parser->uint16;
 	my $pid_h  = $parser->uint16;
 	my $sign   = $parser->bytes(8);
+	$parser->skip(2);  # reserved
 	my $tid    = $parser->uint16;
 	my $pid_l  = $parser->uint16;
 	my $uid    = $parser->uint16;
