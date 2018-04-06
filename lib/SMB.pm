@@ -88,9 +88,9 @@ sub log ($$@) {
 }
 
 sub err ($@) { shift()->log(LOG_LEVEL_ERROR, @_); return }
-sub msg ($@) { shift()->log(LOG_LEVEL_INFO,  @_) }
-sub dbg ($@) { shift()->log(LOG_LEVEL_DEBUG, @_) }
-sub trc ($@) { shift()->log(LOG_LEVEL_TRACE, @_) }
+sub msg ($@) { shift()->log(LOG_LEVEL_INFO,  @_); return }
+sub dbg ($@) { shift()->log(LOG_LEVEL_DEBUG, @_); return }
+sub trc ($@) { shift()->log(LOG_LEVEL_TRACE, @_); return }
 
 my $MAX_DUMP_BYTES = 8 * 1024;
 my $dump_line_format = "%03x | 00 53 54 52 49 4E 47 aa  aa aa aa aa aa aa       | _STRING. ......   |\n";
