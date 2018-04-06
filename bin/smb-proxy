@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2014 Mikhael Goikhman <migo@freeshell.org>
+# Copyright (C) 2014-2018 Mikhael Goikhman <migo@freeshell.org>
 
 use strict;
 use warnings;
