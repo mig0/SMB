@@ -217,7 +217,7 @@ sub connect_tree ($%) {
 	my $connection = $self->get_curr_connection || return;
 
 	my ($addr, $share, $username, $password) =
-		map { $connection->{$_} || $options{$_} || die "No $_ to connect_tree\n" }
+		map { $options{$_} || $connection->{$_} || die "No $_ to connect_tree\n" }
 		qw(addr share username password);
 
 	return unless $self->check_session($connection);
