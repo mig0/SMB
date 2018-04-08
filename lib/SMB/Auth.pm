@@ -594,10 +594,10 @@ sub generate_spnego ($%) {
 		];
 	} elsif (!defined $self->auth_completed) {
 		$self->auth_completed($self->is_user_authenticated ? 1 : 0);
-		my $mechlist_mic = "\x01\x00\x00\x00\x89\x22\x91\x93\xff\xdb\xcb\x26\x00\x00\x00\x00";  #"\x00" x 16;
+		my $mechlist_mic = "\x00" x 16;  # TODO: calculate it correctly when/if needed
 		$struct = [ ASN1_CONTEXT + 1, ASN1_SEQUENCE,
 			[ ASN1_CONTEXT, ASN1_ENUMERATED, SPNEGO_ACCEPT_COMPLETED ],
-			[ ASN1_CONTEXT + 3, ASN1_BINARY, $mechlist_mic ],
+#			[ ASN1_CONTEXT + 3, ASN1_BINARY, $mechlist_mic ],
 		] if $self->auth_completed;
 	} else {
 		$self->err("generate_spnego called after auth_completed");
