@@ -350,7 +350,8 @@ SMB - A humble SMB network protocol implementation in Perl
 
 	# list all txt files in the share
 	for my $file ($tree->find("*.txt")) {
-		printf "%-40s %s\n", $file->name, $file->mtime_string;
+		printf "%-40s %9s %s\n",
+			$file->name, $file->size_string, $file->mtime_string;
 	}
 
 	# rotate, download and remove remote log

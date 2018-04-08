@@ -159,6 +159,22 @@ sub atime_string { time_to_string($_[0]->atime, $_[1]) }
 sub wtime_string { time_to_string($_[0]->wtime, $_[1]) }
 sub mtime_string { time_to_string($_[0]->mtime, $_[1]) }
 
+use constant {
+	KILO => 1024 ** 1,
+	MEGA => 1024 ** 2,
+	GIGA => 1024 ** 3,
+	TERA => 1024 ** 4,
+};
+
+sub size { $_[0]->end_of_file }
+sub size_string {
+	my $size = $_[0]->size;
+	$size < 1e10 ? $size :
+	$size < 1e13 ? sprintf "%.3f G", $size / GIGA :
+	$size < 1e16 ? sprintf "%.3f T", $size / TERA :
+	substr($size, 0, 6) . "e" . (length($size) - 5);
+}
+
 sub add_openfile ($$$) {
 	my $self = shift;
 	my $handle = shift;
@@ -483,6 +499,16 @@ Returns file last_write_time as string using function B<time_to_string>.
 =item mtime_string [FORMAT]
 
 Returns file change_time as string using function B<time_to_string>.
+
+=item size
+
+Returns file size in bytes. This is just an alias to B<end_of_file>.
+
+=item size_string
+
+Returns file size in human readable form that is always not longer
+than 9 characters, like: "314159265", "34.567 G", "234.567 T" or
+"785634e12".
 
 =item add_openfile HANDLE ACTION
 

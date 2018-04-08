@@ -3,6 +3,7 @@ Releases of SMB-Perl library and main changes.
 0.08 - 2018-04-??
 
 * Improved class documentation.
+* Added SMB::File::size[_string] and use it in client file listing (dir).
 
 0.07 - 2018-04-06
 
