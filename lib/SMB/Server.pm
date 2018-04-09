@@ -116,6 +116,7 @@ sub on_command ($$$) {
 		if ($command->is('Negotiate')) {
 			if ($command->supports_smb_dialect(0x0202)) {
 				$command = SMB::v2::Command::Negotiate->new_from_v1($command);
+				$tid = 0;
 			} else {
 				$self->err("Client does not support SMB2, and we do not support SMB1, stopping");
 			}
@@ -131,7 +132,7 @@ sub on_command ($$$) {
 			$error = SMB::STATUS_SMB_BAD_TID;
 		}
 		elsif ($fid) {
-			$openfile = $connection->{openfiles}{@$fid}
+			$openfile = $connection->{openfiles}{$fid->[0], $fid->[1]}
 				or $error = SMB::STATUS_FILE_CLOSED;
 			$command->openfile($openfile);
 		}
@@ -181,7 +182,7 @@ sub on_command ($$$) {
 				$openfile = $file->open_by_disposition($disposition);
 				if ($openfile) {
 					$fid = [ ++$connection->{last_fid}, 0 ];
-					$connection->{openfiles}{@$fid} = $openfile;
+					$connection->{openfiles}{$fid->[0], $fid->[1]} = $openfile;
 					$command->fid($fid);
 					$command->openfile($openfile);
 					$openfile->delete_on_close(1) if $command->requested_delete_on_close;
@@ -198,7 +199,7 @@ sub on_command ($$$) {
 					or $self->err("Failed to remove $filename: $!");
 			}
 			$openfile->close;
-			delete $connection->{openfiles}{@$fid};
+			delete $connection->{openfiles}{$fid->[0], $fid->[1]};
 		}
 		elsif ($command->is('SetInfo')) {
 			my $rename_info = $command->requested_rename_info;

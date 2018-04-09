@@ -4,6 +4,7 @@ Releases of SMB-Perl library and main changes.
 
 * Improved class documentation.
 * Added SMB::File::size[_string] and use it in client file listing (dir).
+* Fixed multiple problems in server.
 * Added minimal support for Cancel request in server.
 
 0.07 - 2018-04-06
