@@ -231,6 +231,10 @@ sub on_command ($$$) {
 			);
 			$error = SMB::STATUS_INVALID_PARAMETER unless defined $command->{files};
 		}
+		elsif ($command->is('Cancel')) {
+			$command->header->code($SMB::v2::Commands::command_codes{'ChangeNotify'});
+			$error = SMB::STATUS_CANCELLED;
+		}
 		$command->prepare_response;
 		$command->set_status($error) if $error;
 		$connection->send_command($command);
