@@ -60,9 +60,9 @@ sub skip ($$) {
 	my $n_avail = $self->{offset} + $n_bytes > $self->size
 		? $self->size - $self->{offset} : $n_bytes;
 
-	$self->zero($n_bytes - $n_avail) if $n_avail < $n_bytes;
-
 	$self->{offset} += $n_avail;
+
+	$self->zero($n_bytes - $n_avail) if $n_avail < $n_bytes;
 
 	return $self;
 }
