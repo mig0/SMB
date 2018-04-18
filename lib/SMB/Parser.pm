@@ -100,6 +100,14 @@ sub skip ($) {
 	return $self;
 }
 
+sub align ($;$$) {
+	my $self = shift;
+	my $offset = shift || 0;
+	my $step = shift || 4;
+
+	$self->skip(($step - ($self->offset - $offset) % $step) % $step);
+}
+
 sub uint8     { uint($_[0], 1   ); }
 sub uint16    { uint($_[0], 2   ); }
 sub uint32    { uint($_[0], 4   ); }
@@ -129,6 +137,7 @@ SMB::Parser - Convenient data parser for network protocols like SMB
 	#   secret key (8), flags (1), mode (2 in little-endian),
 	#   payload offset (4) and length (4),
 	#   filename prefixed with length (2 + length),
+	#   padding to 4 bytes,
 	#   payload
 	# SMB::Packer documentation shows how it could be packed.
 
@@ -148,8 +157,13 @@ SMB::Parser - Convenient data parser for network protocols like SMB
 	my $text_length = $parser->uint16;
 	my $filename = $parser->utf16($text_length);
 
+	$parser->align;  # redundant; mere jump using reset is enough
 	$parser->reset($body_start + $payload_offset);
 	my $payload = $parser->bytes($payload_length);
+
+	$parser->align;
+	my $unconsumed_buffer = $parser->bytes(
+		bytes::length($packet_data_buffer) - $parser->offset);
 
 =head1 DESCRIPTION
 
@@ -200,6 +214,11 @@ Returns the managed data size.
 =item offset
 
 Returns the current data pointer (starts from 0).
+
+=item align [START_OFFSET=0] [STEP=4]
+
+Advances the pointer, if needed, until the next alignment point
+(that is every STEP bytes starting from START_OFFSET).
 
 =item skip N_BYTES
 

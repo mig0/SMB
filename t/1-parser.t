@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-use Test::More tests => 51;
+use Test::More tests => 56;
 
 use lib '../lib', 'lib';
 
@@ -44,3 +44,15 @@ is($parser->bytes($parser->size), $parser->data, "bytes(all)");
 is($parser->offset, $parser->size, "offset end");
 is($parser->uint32, undef,       "uint32");
 is($parser->bytes(2000), '',     "bytes(2000)");
+
+$parser->set("2018-04-18 22:40:35");
+$parser->skip(2);
+is($parser->offset, 2,           "offset after skip(2)");
+$parser->align;
+is($parser->bytes(2), "-0",      "bytes(2) after skip(2) + align");
+$parser->align(5, 3);
+is($parser->bytes(3), "18 ",     "bytes(3) after align(4, 4)");
+$parser->align(2);
+is($parser->bytes(3), "40:",     "bytes(3) after align(1)");
+$parser->align(0, 1);  # void
+is($parser->bytes(3), "35",      "bytes(3) near the end");
