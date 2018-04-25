@@ -100,7 +100,7 @@ sub new ($%) {
 	}
 	my $is_ipc = $options{is_ipc} ||= 0;
 	my @stat = !$is_ipc && $filename && -e $filename ? stat($filename) : ();
-	my $is_srv = $is_ipc && $name =~ /^(?:srvsvc|wkssvc)$/;
+	my $is_svc = $is_ipc && $name =~ /^(?:srvsvc|wkssvc)$/;
 
 	my $self = $class->SUPER::new(
 		name             => $name,
@@ -112,7 +112,8 @@ sub new ($%) {
 		allocation_size  => @stat ? ($stat[12] || 0) * 512: 0,
 		end_of_file      => @stat ? $stat[ 7]             : 0,
 		attributes       => @stat ? to_ntattr($stat[ 2])  : $is_directory ? ATTR_DIRECTORY : 0,
-		exists           => @stat || $is_srv ? 1 : 0,
+		exists           => @stat || $is_svc ? 1 : 0,
+		is_svc           => $is_svc,
 		opens            => 0,
 		%options,
 	);

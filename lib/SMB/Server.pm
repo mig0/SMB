@@ -22,6 +22,7 @@ use parent 'SMB::Agent';
 
 use File::Basename qw(basename);
 use SMB::Tree;
+use SMB::DCERPC;
 use SMB::v2::Command::Negotiate;
 use SMB::v2::Command::Create;
 use SMB::v2::Command::QueryDirectory;
@@ -181,6 +182,8 @@ sub on_command ($$$) {
 			unless ($error) {
 				$openfile = $file->open_by_disposition($disposition);
 				if ($openfile) {
+					$openfile->{dcerpc} = SMB::DCERPC->new(name => $file->name)
+						if $file->is_svc;
 					$fid = [ ++$connection->{last_fid}, 0 ];
 					$connection->{openfiles}{$fid->[0], $fid->[1]} = $openfile;
 					$command->fid($fid);
@@ -215,13 +218,26 @@ sub on_command ($$$) {
 			$openfile->delete_on_close(1) if $command->requested_delete_on_close;
 		}
 		elsif ($command->is('Read')) {
-			$command->{buffer} = $openfile->read(
-				length => $command->{length},
-				offset => $command->{offset},
-				minlen => $command->{minimum_count},
-				remain => $command->{remaining_bytes},
-			);
-			$error = SMB::STATUS_END_OF_FILE unless defined $command->{buffer};
+			if ($openfile->{dcerpc}) {
+				($command->{buffer}, $error) = $openfile->dcerpc->generate_packet;
+			}
+			else {
+				$command->{buffer} = $openfile->read(
+					length => $command->{length},
+					offset => $command->{offset},
+					minlen => $command->{minimum_count},
+					remain => $command->{remaining_bytes},
+				);
+				$error = SMB::STATUS_END_OF_FILE unless defined $command->{buffer};
+			}
+		}
+		elsif ($command->is('Write')) {
+			if ($openfile->{dcerpc}) {
+				$error = $openfile->dcerpc->process_packet($command->buffer);
+			}
+			else {
+				$error = SMB::STATUS_NOT_IMPLEMENTED;
+			}
 		}
 		elsif ($command->is('QueryDirectory')) {
 			$command->file_index($openfile->last_index)

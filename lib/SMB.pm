@@ -24,6 +24,7 @@ use constant {
 	STATUS_SUCCESS                  => 0x00000000,
 	STATUS_PENDING                  => 0x00000103,
 	STATUS_NOTIFY_ENUM_DIR          => 0x0000010c,
+	STATUS_INVALID_SMB              => 0x00010002,
 	STATUS_SMB_BAD_TID              => 0x00050002,
 	STATUS_OS2_INVALID_LEVEL        => 0x007c0001,
 	STATUS_NO_MORE_FILES            => 0x80000006,
