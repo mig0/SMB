@@ -64,6 +64,7 @@ sub new ($%) {
 		state => STATE_INITIAL,
 		current_packet_type => undef,
 		current_context_id => undef,
+		current_call_id => 1,
 		requested_opnum => undef,
 		requested_opinfo => {},
 		contexts => [],
@@ -105,8 +106,7 @@ sub parse_common ($$$) {
 		unless $auth_len eq 0;
 
 	my $call_id = $parser->uint32 // '-';
-	return $self->err("Got unsupported DCERPC call_id ($call_id)")
-		unless $call_id eq 2;
+	$self->current_call_id($call_id);
 
 	if ($packet_type == PACKET_TYPE_BIND || $packet_type == PACKET_TYPE_BIND_ACK) {
 		$parser->uint16;  # max_xmit_frag
@@ -139,7 +139,7 @@ sub pack_common ($$) {
 		->uint32(0x10)  # data_representation
 		->stub('frag-length', 'uint16')
 		->uint16(0)  # auth_len
-		->uint32(2)  # call_id
+		->uint32($self->current_call_id)
 		;
 
 	if ($packet_type == PACKET_TYPE_BIND || $packet_type == PACKET_TYPE_BIND_ACK) {
@@ -197,7 +197,7 @@ sub process_bind_request ($$) {
 
 	for (0 .. $num_contexts - 1) {
 		my $context_id = $parser->uint16;
-		return $self->error(SMB::STATUS_INVALID_PARAMETER, "Got context id is $context_id, expected $_")
+		return $self->error(SMB::STATUS_INVALID_PARAMETER, "Got context id $context_id, expected $_")
 			unless $context_id eq $_;
 		my $num = $parser->uint16;
 		return $self->error(SMB::STATUS_INVALID_PARAMETER, "Got unexpected num_trans_items ($num)")
@@ -336,12 +336,13 @@ sub process_rpc_request ($$) {
 		my $max_count = $parser->uint64;
 		my $offset = $parser->uint64;
 		my $count = $parser->uint64;
-		my $server_unc = $parser->str($count); chop($server_unc);
-		$parser->align(8);
+		my $server_unc = $parser->skip($offset)->str($count * 2); chop($server_unc);
+		$parser->align(0, 8);
 		$max_count = $parser->uint64;
 		$offset = $parser->uint64;
 		$count = $parser->uint64;
-		my $share_name = $parser->str($count); chop($share_name);
+		my $share_name = $parser->skip($offset)->str($count * 2); chop($share_name);
+		$parser->align(0, 4);
 		my $level = $parser->uint32;
 		return $self->error(SMB::STATUS_NOT_IMPLEMENTED, "Unsupported NetShareGetInfo level $level")
 			unless $level == 1;
@@ -381,19 +382,20 @@ sub generate_rpc_request ($$%) {
 		my $referent_id = $params{referent_id} // 0;
 		my $server_unc = ($params{server_unc} // '127.0.0.1') . "\0";
 		my $share_name = ($params{share_name} // '') . "\0";
-		my $len1 = length($server_unc) * 2;
-		my $len2 = length($share_name) * 2;
+		my $len1 = length($server_unc);
+		my $len2 = length($share_name);
 		$packer
 			->uint64($referent_id)
 			->uint64($len1)  # max_count
 			->uint64(0)      # offset
 			->uint64($len1)  # count
 			->str($server_unc)
-			->align(8)
+			->align(0, 8)
 			->uint64($len2)  # max_count
 			->uint64(0)      # offset
 			->uint64($len2)  # count
 			->str($share_name)
+			->align(0, 4)
 			->uint32(1)  # level
 			;
 		$self->requested_opinfo({
@@ -437,13 +439,13 @@ sub process_rpc_response ($$$) {
 		my $max_count = $parser->uint64;
 		my $offset = $parser->uint64;
 		my $count = $parser->uint64;
-		my $share_name = $parser->str($count); chop($share_name);
-		$parser->align(8);
+		my $share_name = $parser->skip($offset)->str($count * 2); chop($share_name);
+		$parser->align(0, 8);
 		$max_count = $parser->uint64;
 		$offset = $parser->uint64;
 		$count = $parser->uint64;
-		my $comment = $parser->str($count); chop($comment);
-		$parser->align(8);
+		my $comment = $parser->skip($offset)->str($count * 2); chop($comment);
+		$parser->align(0, 4);
 		my $winerror = $parser->uint32;
 		%$retinfo = (
 			referent_id => $referent_id,
@@ -476,8 +478,8 @@ sub generate_rpc_response ($$%) {
 		my $referent_id = $params{referent_id} // $self->requested_opinfo->{referent_id} // 0;
 		my $share_name = ($params{share_name} // $self->requested_opinfo->{share_name} // '') . "\0";
 		my $comment = ($params{comment} // '') . "\0";
-		my $len1 = length($share_name) * 2;
-		my $len2 = length($comment) * 2;
+		my $len1 = length($share_name);
+		my $len2 = length($comment);
 		$packer
 			->uint32(1)             # level
 			->skip(4)
@@ -490,12 +492,12 @@ sub generate_rpc_response ($$%) {
 			->uint64(0)             # offset
 			->uint64($len1)         # count
 			->str($share_name)
-			->align(8)
+			->align(0, 8)
 			->uint64($len2)         # max_count
 			->uint64(0)             # offset
 			->uint64($len2)         # count
 			->str($comment)
-			->align(8)
+			->align(0, 4)
 			->uint32(0)             # winerror
 			;
 	}
@@ -562,14 +564,14 @@ SMB::DCERPC - Minimal support for DCE/RPC protocol (over SMB)
 	$openfile->{dcerpc} = SMB::DCERPC->new(name => 'srvsvc');
 
 	# on Write request (when $openfile->{dcerpc} set)
-	$status = $operfile->dcerpc->process_bind_request($request->buffer);
+	$status = $openfile->dcerpc->process_bind_request($request->buffer);
 
 	# on Read request (when $openfile->{dcerpc} set)
-	($payload, $status) = $operfile->dcerpc->generate_bind_ack_response;
+	($payload, $status) = $openfile->dcerpc->generate_bind_ack_response;
 
 	# on Ioctl request (when $openfile->{dcerpc} set)
-	$operfile->dcerpc->process_rpc_request($request->buffer);
-	($payload, $status) = $operfile->dcerpc->generate_rpc_response;
+	$openfile->dcerpc->process_rpc_request($request->buffer);
+	($payload, $status) = $openfile->dcerpc->generate_rpc_response;
 
 
 	# in client
