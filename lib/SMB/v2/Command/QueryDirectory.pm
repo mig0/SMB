@@ -149,7 +149,7 @@ sub pack ($$) {
 			;
 			$packer
 				->zero($level == INFO_LEVEL_IDFULLDIRECTORY ? 4 : 2)
-				->uint64($file->{id} || 0)
+				->uint64($file->id)
 				if $level == INFO_LEVEL_IDFULLDIRECTORY || $level == INFO_LEVEL_IDBOTHDIRECTORY
 			;
 			$packer

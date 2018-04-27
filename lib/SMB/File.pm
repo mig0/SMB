@@ -105,6 +105,7 @@ sub new ($%) {
 	my $self = $class->SUPER::new(
 		name             => $name,
 		filename         => $filename,  # server-side file only
+		id               => @stat ? $stat[ 1]             : 0,
 		creation_time    => @stat ? to_nttime($stat[10])  : 0,
 		last_access_time => @stat ? to_nttime($stat[ 8])  : 0,
 		last_write_time  => @stat ? to_nttime($stat[ 9])  : 0,
