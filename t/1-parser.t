@@ -51,8 +51,8 @@ is($parser->offset, 2,           "offset after skip(2)");
 $parser->align;
 is($parser->bytes(2), "-0",      "bytes(2) after skip(2) + align");
 $parser->align(5, 3);
-is($parser->bytes(3), "18 ",     "bytes(3) after align(4, 4)");
+is($parser->bytes(3), "18 ",     "bytes(3) after align(5, 3)");
 $parser->align(2);
-is($parser->bytes(3), "40:",     "bytes(3) after align(1)");
+is($parser->bytes(3), "40:",     "bytes(3) after align(2)");
 $parser->align(0, 1);  # void
 is($parser->bytes(3), "35",      "bytes(3) near the end");

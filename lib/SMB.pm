@@ -70,7 +70,7 @@ sub new ($%) {
 	my $class = shift;
 	my %options = @_;
 
-	$options{log_level} ||= LOG_LEVEL_INFO;
+	$options{log_level} //= LOG_LEVEL_INFO;
 
 	my $self = {
 		%options,
