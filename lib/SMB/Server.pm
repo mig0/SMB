@@ -26,6 +26,7 @@ use SMB::DCERPC;
 use SMB::v2::Command::Negotiate;
 use SMB::v2::Command::Create;
 use SMB::v2::Command::QueryDirectory;
+use SMB::v2::Command::Ioctl;
 
 sub new ($%) {
 	my $class = shift;
@@ -132,6 +133,9 @@ sub on_command ($$$) {
 		if (($tid || exists $command->{fid}) && !$tree) {
 			$error = SMB::STATUS_SMB_BAD_TID;
 		}
+		elsif ($command->is('Ioctl') && $command->function == SMB::v2::Command::Ioctl::FSCTL_DFS_GET_REFERRALS) {
+			$error = SMB::STATUS_NOT_FOUND;
+		}
 		elsif ($fid) {
 			$openfile = $connection->{openfiles}{$fid->[0], $fid->[1]}
 				or $error = SMB::STATUS_FILE_CLOSED;
@@ -234,6 +238,18 @@ sub on_command ($$$) {
 		elsif ($command->is('Write')) {
 			if ($openfile->{dcerpc}) {
 				$error = $openfile->dcerpc->process_packet($command->buffer);
+			}
+			else {
+				$error = SMB::STATUS_NOT_IMPLEMENTED;
+			}
+		}
+		elsif ($command->is('Ioctl')) {
+			if ($openfile->{dcerpc}) {
+				$error = $openfile->dcerpc->process_rpc_request($command->buffer);
+				unless ($error) {
+					(my $payload, $error) = $openfile->dcerpc->generate_rpc_response;
+					$command->buffer($payload) unless $error;
+				}
 			}
 			else {
 				$error = SMB::STATUS_NOT_IMPLEMENTED;

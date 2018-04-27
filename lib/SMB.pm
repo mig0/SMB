@@ -55,6 +55,7 @@ use constant {
 	STATUS_FILE_CLOSED              => 0xc0000128,
 	STATUS_INVALID_LEVEL            => 0xc0000148,
 	STATUS_FS_DRIVER_REQUIRED       => 0xc000019c,
+	STATUS_NOT_FOUND                => 0xc0000225,
 	STATUS_NOT_A_REPARSE_POINT      => 0xc0000275,
 };
 
