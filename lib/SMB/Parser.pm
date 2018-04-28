@@ -34,6 +34,7 @@ sub new ($$) {
 sub reset ($;$) {
 	my $self = shift;
 	my $offset = shift || 0;
+	die "Negative offset is invalid" if $offset < 0;
 
 	$self->{offset} = $offset;
 
@@ -47,6 +48,17 @@ sub set ($$;$) {
 	$self->{size} = length($_[0]);
 
 	return $self->reset($_[1]);
+}
+
+sub cut ($;$) {
+	my $self = shift;
+	my $offset = shift || $self->{offset};
+	die "Negative offset is invalid" if $offset < 0;
+
+	$offset = $self->{size} if $offset > $self->{size};
+	$self->{offset} = $offset if $offset > $self->{offset};
+
+	return $self->set(substr($self->{data}, $offset) . "", $self->{offset} - $offset);
 }
 
 sub data { $_[0]->{data} }
@@ -202,6 +214,15 @@ continues to advance.
 
 Sets the object DATA (binary scalar) to be parsed and resets the pointer
 using B<reset>.
+
+=item cut DATA [OFFSET=<current-offset>]
+
+Cuts data until the given OFFSET (by default until the current offset).
+This is useful to strip all processed data and have offset at 0.
+
+If OFFSET is lesser than the current offset, then the current offset is
+adjusted correspondingly (reduced by OFFSET). If it is greater, then the
+data is still cut as requested and the current offset is reset to 0.
 
 =item data
 

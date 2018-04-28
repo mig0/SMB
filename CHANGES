@@ -5,6 +5,7 @@ Releases of SMB-Perl library and main changes.
 * Added support for SMB v2 command Ioctl.
 * Added SMB::DCERPC implementing basic DCE/RPC over SMB for client/server.
 * Added SMB::File::size[_string] and use it in client file listing (dir).
+* Added SMB::Parser methods align & cut.
 * Fixed multiple problems in server.
 * Added minimal support for Cancel request in server.
 * Improved class documentation.
