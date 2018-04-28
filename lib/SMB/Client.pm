@@ -573,7 +573,7 @@ sub wait_for_response ($$) {
 
 	return unless $request;
 
-	my $response = $connection->recv_command;
+	my ($response) = $connection->recv_command;
 	if (!$response) {
 		$self->delete_connection($connection);
 		return;

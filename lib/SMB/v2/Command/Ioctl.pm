@@ -59,7 +59,7 @@ sub parse ($$) {
 		$self->max_size($parser->uint32);  # out max_size
 		$self->flags($parser->uint32);
 	}
-	$self->buffer($parser->reset($self->offset + 4)->bytes($self->length));
+	$self->buffer($parser->reset($self->offset)->bytes($self->length));
 
 	return $self;
 }
