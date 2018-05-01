@@ -264,6 +264,9 @@ sub on_command ($$$) {
 			);
 			$error = SMB::STATUS_INVALID_PARAMETER unless defined $command->{files};
 		}
+		elsif ($command->is('ChangeNotify')) {
+			$error = SMB::STATUS_PENDING;
+		}
 		elsif ($command->is('Cancel')) {
 			$command->header->code($SMB::v2::Commands::command_codes{'ChangeNotify'});
 			$error = SMB::STATUS_CANCELLED;
