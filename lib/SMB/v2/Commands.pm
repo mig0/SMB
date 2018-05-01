@@ -230,6 +230,7 @@ sub pack ($$$%) {
 	die "SMB2 command $command->{name} pack produced size $size, expected $size0\n"
 		if $size > $size0 && !$payload_allowed && !$is_error_packet;
 	$packer->zero($size0 - $size) if $size0 > $size;
+	$packer->align('smb-header', 8) if $command->is('QueryDirectory');
 
 	$packer->mark('end');
 	if ($is_chained && !$is_last) {

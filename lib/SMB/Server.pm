@@ -256,11 +256,12 @@ sub on_command ($$$) {
 			}
 		}
 		elsif ($command->is('QueryDirectory')) {
-			$command->file_index($openfile->last_index)
-				unless $command->flags & SMB::v2::Command::QueryDirectory::FLAGS_INDEX;
+			my $start_idx = $command->is_reopen ? 0 : $command->is_index_specified
+				? $command->file_index : $openfile->last_index;
 			$command->{files} = $openfile->file->find_files(
 				pattern => $command->file_pattern,
-				start_idx => $command->file_index,
+				start_idx => $start_idx,
+				reopen => $command->is_reopen,
 			);
 			$error = SMB::STATUS_INVALID_PARAMETER unless defined $command->{files};
 		}
