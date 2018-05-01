@@ -65,7 +65,7 @@ sub is_signed ($) {
 sub is_chained ($) {
 	my $self = shift;
 
-	return $self->chain_offset &&
+	return
 		($self->flags & FLAGS_CHAINED) != 0;
 }
 
