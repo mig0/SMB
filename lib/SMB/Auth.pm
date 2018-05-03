@@ -46,6 +46,7 @@ use constant {
 use constant {
 	OID_SPNEGO       => '1.3.6.1.5.5.2',
 	OID_MECH_NTLMSSP => '1.3.6.1.4.1.311.2.2.10',
+	OID_MECH_NEGOEX  => '1.3.6.1.4.1.311.2.2.30',
 
 	SPNEGO_ACCEPT_COMPLETED  => 0,
 	SPNEGO_ACCEPT_INCOMPLETE => 1,
@@ -422,6 +423,7 @@ sub generate_spnego ($%) {
 			[ ASN1_OID, OID_SPNEGO ],
 			[ ASN1_CONTEXT, ASN1_SEQUENCE,
 				[ ASN1_CONTEXT, ASN1_SEQUENCE,
+					[ ASN1_OID, OID_MECH_NEGOEX ],
 					[ ASN1_OID, OID_MECH_NTLMSSP ],
 				],
 			],
