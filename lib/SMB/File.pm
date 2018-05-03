@@ -324,10 +324,12 @@ sub find_files ($%) {
 	return unless $self->is_directory;
 
 	my $pattern = $params{pattern} || '*';
-	my $want_all = $pattern eq '*';
 	my $start_idx = $params{start_idx} || 0;
-	my $files = $params{reopen} ? undef : $self->{files};  # cached for fragmented queries
 	my $name = $self->name;
+
+	$self->{files} ||= {};
+	# cached for fragmented queries
+	my $files = $params{reopen} ? undef : $self->{files}{pattern};
 
 	# fix pattern if needed
 	my $pattern0 = $pattern;
@@ -340,7 +342,7 @@ sub find_files ($%) {
 			name => $_,
 			share_root => $self->share_root . ($name eq '' ? '' : "/$name"),
 		) } @filenames ];
-		$self->{files} = $files if $want_all;
+		$self->{files}{$pattern} = $files;
 	}
 
 	return $start_idx ? [ @{$files}[$start_idx .. (@$files - 1)] ] : $files;
