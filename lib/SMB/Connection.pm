@@ -153,7 +153,7 @@ sub recv_command ($) {
 		} else {
 			$self->err("Failed to parse SMB%d packet", $is_smb1 ? 1 : 2);
 		}
-		last unless $command && $command->header->chain_offset;
+		last unless $command && $command->has_next_in_chain;
 	}
 
 	return @commands;

@@ -62,4 +62,10 @@ sub prepare_response ($) {
 	$self->header->credits(31) if $self->header->credits > 31;
 }
 
+sub has_next_in_chain ($) {
+	my $self = shift;
+
+	return $self->header->chain_offset ? 1 : 0;
+}
+
 1;

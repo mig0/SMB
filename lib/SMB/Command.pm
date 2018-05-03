@@ -109,6 +109,12 @@ sub abort_pack ($$) {
 	return $self;
 }
 
+sub has_next_in_chain ($) {
+	my $self = shift;
+
+	return 0;
+}
+
 sub init ($) {
 }
 
