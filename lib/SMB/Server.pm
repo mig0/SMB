@@ -174,6 +174,7 @@ sub on_command ($$$) {
 				name => $command->file_name,
 				share_root => $tree->root,
 				is_ipc => $tree->is_ipc,
+				is_directory => $command->requested_directory,
 			);
 			my $disposition = $command->disposition;
 			if ($file->exists && $disposition == SMB::File::DISPOSITION_OPEN) {

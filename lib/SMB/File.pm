@@ -246,7 +246,9 @@ sub open ($) {
 sub create ($) {
 	my $self = shift;
 
-	sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | O_CREAT | O_EXCL)
+	($self->is_directory
+		? mkdir($self->filename, 0777)  # respect umask
+		: sysopen(my $fh, $self->filename, from_ntattr($self->attributes) | O_CREAT | O_EXCL))
 		or return $self->_fail_exists(-e $self->filename ? 1 : 0);
 
 	$self->add_openfile($fh, ACTION_CREATED);

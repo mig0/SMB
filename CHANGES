@@ -8,6 +8,7 @@ Releases of SMB-Perl library and main changes.
 * Added SMB::File::size[_string] and use it in client file listing (dir).
 * Added SMB::Parser methods align & cut.
 * Fixed file listings (Find responses) in server.
+* Fixed creating directory in server.
 * Fixed multiple problems in server.
 * Added minimal support for Notify and Cancel requests in server.
 * Improved class documentation.
