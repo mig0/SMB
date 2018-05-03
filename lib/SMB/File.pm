@@ -85,7 +85,7 @@ sub new ($%) {
 	my %options = @_;
 
 	my $name = delete $options{name} // die "No name in constructor";
-	$name =~ s!\\!\/!g;
+	$name =~ s!\\!/!g;
 	$name =~ s!/{2,}!/!g;
 	$name =~ s!/$!!;
 	my $is_directory = delete $options{is_directory};
@@ -98,6 +98,7 @@ sub new ($%) {
 		$filename =~ s!/{2,}!/!g;
 		$filename = '.' if $filename eq '';
 	}
+	$name =~ s!/!\\!g;
 	my $is_ipc = $options{is_ipc} ||= 0;
 	my @stat = !$is_ipc && $filename && -e $filename ? stat($filename) : ();
 	my $is_svc = $is_ipc && $name =~ /^(?:srvsvc|wkssvc)$/;
