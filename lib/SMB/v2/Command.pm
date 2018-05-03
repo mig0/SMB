@@ -41,6 +41,20 @@ sub new ($$%) {
 	return $self;
 }
 
+sub abort_pack ($$) {
+	my $self = shift;
+	my $packer = shift;
+	my $status = shift;
+
+	$self->set_status($status);
+	$packer
+		->jump('status')->uint32($status)
+		->jump('command-start')->uint16(9)
+	;
+
+	return $self;
+}
+
 sub prepare_response ($) {
 	my $self = shift;
 

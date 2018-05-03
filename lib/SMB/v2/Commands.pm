@@ -214,23 +214,22 @@ sub pack ($$$%) {
 	$packer->uint64($header->uid);
 	$packer->bytes("\0" x 16);      # no message signing for now
 
-	$packer->mark('header-end');
-	$packer->uint16($command->is_success ? $struct_size : 9);
 	$packer->mark('command-start');
+	$packer->uint16($command->is_success ? $struct_size : 9);
 
 	my $is_error_packet = $command->is_error && !$command->is('SessionSetup');
 
 	$command->pack($packer) if !$is_error_packet;
-	$packer->zero(6 + 1) if $is_error_packet;
+	$is_error_packet ||= $command->is_error;  # support abort_pack inside pack
+	$packer->skip(6 + 1) if $is_error_packet;
 
 	my $payload_allowed = $struct_size % 2;
 	$payload_allowed = 1 if $command->is('Negotiate') && !$is_response;
-	my $size = $packer->diff('header-end');
+	my $size = $packer->diff('command-start');
 	my $size0 = $struct_size & ~1;
 	die "SMB2 command $command->{name} pack produced size $size, expected $size0\n"
 		if $size > $size0 && !$payload_allowed && !$is_error_packet;
 	$packer->zero($size0 - $size) if $size0 > $size;
-	$packer->align('smb-header', 8) if $command->is('QueryDirectory');
 
 	$packer->mark('end');
 	if ($is_chained && !$is_last) {

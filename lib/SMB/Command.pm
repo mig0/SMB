@@ -101,6 +101,14 @@ sub pack ($$%) {
 	return $self;
 }
 
+sub abort_pack ($$) {
+	my $self = shift;
+	my $packer = shift;
+	my $status = shift;
+
+	return $self;
+}
+
 sub init ($) {
 }
 
@@ -111,17 +119,6 @@ sub set ($%) {
 	my %values = @_;
 
 	$self->{$_} = $values{$_} for keys %values;
-}
-
-sub abort_pack ($$) {
-	my $self = shift;
-	my $packer = shift;
-	my $status = shift;
-
-	$self->set_status($status);
-	$packer->jump('status')->uint32($status)->jump('command-start');
-
-	return $self;
 }
 
 sub to_string ($) {
