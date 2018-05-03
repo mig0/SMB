@@ -142,7 +142,7 @@ sub create_ntlmv2_hash ($$$) {
 	my $username = shift // '';
 	my $domain = shift // '';
 
-	return hmac_md5(encode('UTF-16LE', uc($username . $domain)), $ntlm_hash);
+	return hmac_md5(encode('UTF-16LE', uc($username) . $domain), $ntlm_hash);
 }
 
 sub create_lmv2_response ($$$$) {
