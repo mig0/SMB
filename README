@@ -23,6 +23,7 @@ Classes:
 	SMB::Command
 	SMB::Connection
 	SMB::Crypt
+	SMB::DCERPC
 	SMB::File
 	SMB::Header
 	SMB::OpenFile
@@ -39,6 +40,7 @@ Classes:
 	SMB::v2::Command
 	SMB::v2::Command::Close
 	SMB::v2::Command::Create
+	SMB::v2::Command::Ioctl
 	SMB::v2::Command::Negotiate
 	SMB::v2::Command::QueryDirectory
 	SMB::v2::Command::QueryInfo
