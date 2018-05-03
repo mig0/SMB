@@ -579,6 +579,11 @@ sub wait_for_response ($$) {
 		return;
 	}
 
+	if ($response->is_response_to($request) && $response->status == SMB::STATUS_PENDING) {
+		$self->dbg("Ignoring STATUS_PENDING response");
+		($response) = $connection->recv_command;
+	}
+
 	unless ($response->is_response_to($request)) {
 		$self->err("Unexpected: " . $response->to_string);
 		return;
