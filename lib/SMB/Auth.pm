@@ -95,6 +95,7 @@ sub new ($) {
 		username              => undef,
 		session_key           => undef,
 		auth_completed        => undef,
+		is_raw_ntlmssp        => 0,
 		user_passwords        => {},
 		parser => SMB::Parser->new,
 		packer => SMB::Packer->new,
@@ -321,8 +322,14 @@ sub process_spnego ($$%) {
 	return unless @bytes > 2;
 
 	@parsed_context_values = ();
-	my $struct = parse_asn1(\@bytes);
-	return unless $struct;
+	if (substr($buffer, 0, length(NTLMSSP_ID_STR)) eq NTLMSSP_ID_STR) {
+		# support raw NTLMSSP request, used in cifs-utils
+		$parsed_context_values[2] = [ ASN1_BINARY, \@bytes ];
+		$self->{is_raw_ntlmssp} = 1;
+	} else {
+		my $struct = parse_asn1(\@bytes);
+		return unless $struct;
+	}
 
 	if (!defined $self->ntlmssp_supported || $options{is_initial}) {
 		my $value = $parsed_context_values[0];
@@ -507,6 +514,9 @@ sub generate_spnego ($%) {
 			->uint16(NTLMSSP_ITEM_TERMINATOR)
 			->uint16(0)
 		;
+
+		return $self->packer->data
+			if $self->{is_raw_ntlmssp};
 
 		$struct = [ ASN1_CONTEXT + 1, ASN1_SEQUENCE,
 			[ ASN1_CONTEXT, ASN1_ENUMERATED, SPNEGO_ACCEPT_INCOMPLETE ],
