@@ -25,6 +25,7 @@ use SMB::Tree;
 use SMB::DCERPC;
 use SMB::v2::Command::Negotiate;
 use SMB::v2::Command::Create;
+use SMB::v2::Command::QueryInfo;
 use SMB::v2::Command::QueryDirectory;
 use SMB::v2::Command::Ioctl;
 
@@ -208,6 +209,9 @@ sub on_command ($$$) {
 			}
 			$openfile->close;
 			delete $connection->{openfiles}{$fid->[0], $fid->[1]};
+		}
+		elsif ($command->is('QueryInfo')) {
+			$command->prepare_info;
 		}
 		elsif ($command->is('SetInfo')) {
 			my $rename_info = $command->requested_rename_info;

@@ -1,5 +1,9 @@
 Releases of SMB-Perl library and main changes.
 
+0.09 - 2018-05-??
+
+* Added support for QueryInfo FILE and FS requests in server.
+
 0.08 - 2018-05-03
 
 * Added support for chained SMB v2 commands from client.
