@@ -136,8 +136,9 @@ sub pack ($$) {
 	}
 }
 
-sub prepare_info ($) {
+sub prepare_info ($%) {
 	my $self = shift;
+	my %params = @_;
 
 	my $type = $self->type;
 	my $level = $self->level;
@@ -151,7 +152,8 @@ sub prepare_info ($) {
 	my $packer = SMB::Packer->new;
 
 	my $type_name = $type_names[$type] || "UNKNOWN";
-	$self->msg("Preparing info type=$type_name level=$level for $filename");
+	$self->msg("Info $type_name level=$level for $filename")
+		unless $params{quiet};
 
 	if ($type == TYPE_FILE) {
 		my $filename = $file->name;

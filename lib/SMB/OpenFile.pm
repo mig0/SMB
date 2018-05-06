@@ -60,6 +60,8 @@ sub read ($%) {
 	my $minlen = $params{minlen} || 0;
 
 	my $buffer;
+	$self->msg("Read $self->{file}{filename} - $length bytes offset=$offset")
+		unless $params{quiet};
 	sysread($fh, $buffer, $length) // return;
 	return if length($buffer) < $minlen;
 

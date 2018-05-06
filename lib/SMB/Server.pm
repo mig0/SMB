@@ -211,7 +211,7 @@ sub on_command ($$$) {
 			delete $connection->{openfiles}{$fid->[0], $fid->[1]};
 		}
 		elsif ($command->is('QueryInfo')) {
-			$command->prepare_info;
+			$command->prepare_info(quiet => $self->quiet);
 		}
 		elsif ($command->is('SetInfo')) {
 			my $rename_info = $command->requested_rename_info;
@@ -236,6 +236,7 @@ sub on_command ($$$) {
 					offset => $command->{offset},
 					minlen => $command->{minimum_count},
 					remain => $command->{remaining_bytes},
+					quiet  => $self->quiet,
 				);
 				$error = SMB::STATUS_END_OF_FILE unless defined $command->{buffer};
 			}
@@ -267,6 +268,7 @@ sub on_command ($$$) {
 				pattern => $command->file_pattern,
 				start_idx => $start_idx,
 				reopen => $command->is_reopen,
+				quiet => $self->quiet,
 			);
 			$error = SMB::STATUS_INVALID_PARAMETER unless defined $command->{files};
 		}
