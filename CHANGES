@@ -3,6 +3,7 @@ Releases of SMB-Perl library and main changes.
 0.09 - 2018-05-??
 
 * Added support for QueryInfo FILE and FS requests in server.
+* Added support for anonymous user in server (enabled in config).
 * Fixed Read responses in server.
 
 0.08 - 2018-05-03

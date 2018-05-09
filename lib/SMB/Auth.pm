@@ -78,6 +78,7 @@ sub new ($) {
 
 	return $class->SUPER::new(
 		ntlmssp_supported     => undef,
+		negotiate_flags       => undef,
 		client_host           => undef,
 		client_domain         => undef,
 		server_challenge      => undef,
@@ -97,6 +98,7 @@ sub new ($) {
 		auth_completed        => undef,
 		is_raw_ntlmssp        => 0,
 		user_passwords        => {},
+		allow_anonymous       => 0,
 		parser => SMB::Parser->new,
 		packer => SMB::Packer->new,
 	);
@@ -184,6 +186,10 @@ sub load_user_passwords ($$) {
 	my %user_passwords = map {
 		s/^\s+//;
 		s/\s+$//;
+		if ($_ eq ':') {
+			$self->allow_anonymous(1);
+			next;
+		}
 		my ($username, $hash_str) = split ':', $_;
 		my @hash_bytes = ($hash_str || '') =~ /^[0-9a-f]{64}$/
 			? map { chr(hex(substr($hash_str, $_ * 2, 2))) } 0 .. 31
@@ -358,7 +364,8 @@ sub process_spnego ($$%) {
 	if (!defined $self->client_host) {
 		return $self->err("No expected NTLMSSP_NEGOTIATE")
 			unless $parser->uint32 == NTLMSSP_NEGOTIATE;
-		$parser->skip(4);  # skip flags
+		GOT_NTLMSSP_NEGOTIATE:
+		$self->negotiate_flags($parser->uint32);
 		my $len1 = $parser->uint16;
 		my $off1 = $parser->skip(2)->uint32;
 		my $len2 = $parser->uint16;
@@ -370,6 +377,7 @@ sub process_spnego ($$%) {
 			unless $parser->uint32 == NTLMSSP_CHALLENGE;
 		my $len1 = $parser->uint16;
 		my $off1 = $parser->skip(2)->uint32;
+		$self->negotiate_flags($parser->uint32);
 		$self->server_challenge($parser->reset(24)->bytes(8));
 		$self->server_host($parser->reset($off1)->str($len1));
 		my $itemtype;
@@ -388,8 +396,13 @@ sub process_spnego ($$%) {
 				if $itemtype == NTLMSSP_ITEM_DNSDOMAIN;
 		}} while ($itemtype != NTLMSSP_ITEM_TERMINATOR)
 	} elsif (!defined $self->client_challenge) {
+		my $message_type = $parser->uint32;
+		if ($message_type == NTLMSSP_NEGOTIATE) {
+			$self->server_challenge(undef);
+			goto GOT_NTLMSSP_NEGOTIATE;
+		}
 		return $self->err("No expected NTLMSSP_AUTH")
-			unless $parser->uint32 == NTLMSSP_AUTH;
+			unless $message_type == NTLMSSP_AUTH;
 		my $llen = $parser->uint16;
 		my $loff = $parser->skip(2)->uint32;
 		my $nlen = $parser->uint16;
@@ -400,12 +413,16 @@ sub process_spnego ($$%) {
 		my $off2 = $parser->skip(2)->uint32;
 		my $len3 = $parser->uint16;
 		my $off3 = $parser->skip(2)->uint32;
+		my $len4 = $parser->uint16;
+		my $off4 = $parser->skip(2)->uint32;
+		$self->negotiate_flags($parser->uint32);
 		$self->client_challenge($parser->reset($noff + 28)->bytes(8));
 		$self->lm_response  ($parser->reset($loff)->bytes($llen));
 		$self->ntlm_response($parser->reset($noff)->bytes($nlen));
 		$self->client_domain($parser->reset($off1)->str($len1));
 		$self->username     ($parser->reset($off2)->str($len2));
 		$self->client_host  ($parser->reset($off3)->str($len3));
+		$self->session_key  ($parser->reset($off4)->str($len4));
 	} elsif (!defined $self->auth_completed) {
 		my $value = $parsed_context_values[0];
 		return $self->err("No expected spnego context value (ACCEPT_COMPLETED)")
@@ -449,7 +466,7 @@ sub generate_spnego ($%) {
 		$self->packer->reset
 			->bytes(NTLMSSP_ID_STR)
 			->uint32(NTLMSSP_NEGOTIATE)
-			->uint32(NTLMSSP_FLAGS_CLIENT)
+			->uint32($self->negotiate_flags(NTLMSSP_FLAGS_CLIENT))
 			->uint16(length($domain))
 			->uint16(length($domain))
 			->uint32(32)
@@ -488,7 +505,7 @@ sub generate_spnego ($%) {
 			->uint16(length($self->server_host) * 2)
 			->uint16(length($self->server_host) * 2)
 			->uint32(56)
-			->uint32(NTLMSSP_FLAGS_SERVER)
+			->uint32($self->negotiate_flags(NTLMSSP_FLAGS_SERVER))
 			->bytes($self->server_challenge)
 			->uint64(0)  # reserved
 			->uint16($tlen)
@@ -592,7 +609,7 @@ sub generate_spnego ($%) {
 			->uint16(16)
 			->uint16(16)
 			->uint32(88 + $nlen + length("$domain$username$host") * 2)
-			->uint32(NTLMSSP_FLAGS_CLIENT)
+			->uint32($self->negotiate_flags(NTLMSSP_FLAGS_CLIENT))
 			->bytes($lm_response)
 			->bytes($ntlm_response)
 			->str($domain)
@@ -605,7 +622,8 @@ sub generate_spnego ($%) {
 			[ ASN1_CONTEXT + 2, ASN1_BINARY, $self->packer->data ],
 		];
 	} elsif (!defined $self->auth_completed) {
-		$self->auth_completed($self->is_user_authenticated ? 1 : 0);
+		my $is_anonymous = ($self->negotiate_flags & 0x800) && $self->allow_anonymous;
+		$self->auth_completed($is_anonymous || $self->is_user_authenticated ? 1 : 0);
 		my $mechlist_mic = "\x00" x 16;  # TODO: calculate it correctly when/if needed
 		$struct = [ ASN1_CONTEXT + 1, ASN1_SEQUENCE,
 			[ ASN1_CONTEXT, ASN1_ENUMERATED, SPNEGO_ACCEPT_COMPLETED ],
@@ -640,6 +658,7 @@ SMB::Auth - Authentication mechanisms for SMB (NTLMSSP and more)
 
 	$server_auth->load_user_passwords("p.txt") or
 		$server_auth->set_user_passwords({ tom => '%#' });
+	$server_auth->allow_anonymous(0);
 
 	# Negotiate Response
 	my $buffer = $server_auth->generate_spnego;
