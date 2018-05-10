@@ -156,12 +156,6 @@ sub prepare_info ($%) {
 		unless $params{quiet};
 
 	if ($type == TYPE_FILE) {
-		my $filename = $file->name;
-		my $short_filename = $file->{short_name} || '';
-		# pad and cut short name to exactly 12 chars
-		$short_filename .= "\0" x (12 - length($short_filename));
-		substr($short_filename, 12) = "";
-
 		if ($level == FILE_LEVEL_ALL || $level == FILE_LEVEL_BASIC) {
 			$packer
 				->uint64($file->creation_time)
@@ -176,7 +170,7 @@ sub prepare_info ($%) {
 			$packer
 				->uint64($file->allocation_size)
 				->uint64($file->end_of_file)
-				->uint32(0)  # number of links
+				->uint32(1)  # number of links
 				->uint8($openfile->delete_on_close)  # delete pending
 				->uint8($file->is_directory)
 				->uint16(0)  # reserved
@@ -194,7 +188,7 @@ sub prepare_info ($%) {
 		}
 		if ($level == FILE_LEVEL_ALL || $level == FILE_LEVEL_ACCESS) {
 			$packer
-				->uint32(0xffffffff)  # access flags
+				->uint32(0x00000080)  # access flags (READ ATTRIBUTES)
 			;
 		}
 		if ($level == FILE_LEVEL_ALL || $level == FILE_LEVEL_POSITION) {
@@ -213,6 +207,8 @@ sub prepare_info ($%) {
 			;
 		}
 		if ($level == FILE_LEVEL_ALL || $level == FILE_LEVEL_NAME) {
+			my $filename = $file->name;
+
 			$packer
 				->uint32(length($filename) * 2)
 				->utf16($filename)
