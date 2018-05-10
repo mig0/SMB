@@ -327,10 +327,11 @@ sub find_files ($%) {
 	my $pattern = $params{pattern} || '*';
 	my $start_idx = $params{start_idx} || 0;
 	my $name = $self->name;
+	$name =~ s=\\=/=g;
 
 	$self->{files} ||= {};
 	# cached for fragmented queries
-	my $files = $params{reopen} ? undef : $self->{files}{pattern};
+	my $files = $params{reopen} ? undef : $self->{files}{$pattern};
 
 	# fix pattern if needed
 	my $pattern0 = $pattern;
