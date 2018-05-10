@@ -18,6 +18,8 @@ package SMB::v2::Command;
 use strict;
 use warnings;
 
+no warnings 'portable';  # support 64-bit in form 0x...
+
 use parent 'SMB::Command';
 
 use SMB::v2::Header;
@@ -66,6 +68,29 @@ sub has_next_in_chain ($) {
 	my $self = shift;
 
 	return $self->header->chain_offset ? 1 : 0;
+}
+
+sub is_valid_fid ($) {
+	my $self = shift;
+	my $fid = shift;
+
+	return ref($fid) eq 'ARRAY' && @$fid == 2
+		&& defined $fid->[0] && $fid->[0] =~ /^\d+$/
+		&& defined $fid->[1] && $fid->[1] =~ /^\d+$/;
+}
+
+sub is_fid_unset ($$) {
+	my $self = shift;
+	my $fid = shift;
+
+	return $fid->[0] == 0xffffffffffffffff && $fid->[1] == 0xffffffffffffffff;
+}
+
+sub is_fid_null ($$) {
+	my $self = shift;
+	my $fid = shift;
+
+	return $fid->[0] == 0 && $fid->[1] == 0;
 }
 
 1;

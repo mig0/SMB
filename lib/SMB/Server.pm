@@ -141,6 +141,11 @@ sub on_command ($$$) {
 			$error = SMB::STATUS_OBJECT_NAME_NOT_FOUND;
 		}
 		elsif ($fid) {
+			if ($command->header->is_chained) {
+				$fid = $connection->chain_fid if $connection->chain_fid && $command->is_fid_unset($fid);
+			} else {
+				$connection->chain_fid(undef);
+			}
 			$openfile = $connection->{openfiles}{$fid->[0], $fid->[1]}
 				or $error = SMB::STATUS_FILE_CLOSED;
 			$command->openfile($openfile);
@@ -194,6 +199,7 @@ sub on_command ($$$) {
 					$openfile->{dcerpc} = SMB::DCERPC->new(name => $file->name)
 						if $file->is_svc;
 					$fid = [ ++$connection->{last_fid}, 0 ];
+					$connection->chain_fid($fid) if $command->has_next_in_chain;
 					$connection->{openfiles}{$fid->[0], $fid->[1]} = $openfile;
 					$command->fid($fid);
 					$command->openfile($openfile);
@@ -305,6 +311,7 @@ sub run ($) {
 					$client_socket, ++$self->{client_id},
 					trees     => [],
 					last_fid  => 0,
+					chain_fid => undef,
 					openfiles => {},
 				);
 				unless ($connection) {

@@ -5,6 +5,7 @@ Releases of SMB-Perl library and main changes.
 * Added support for QueryInfo FILE and FS requests in server.
 * Added support for anonymous user in server (enabled in config).
 * Added support for cifs-utils client (mount on GNU/Linux).
+* Added support for chained commands from client with the first Create.
 * Fixed Read responses in server.
 * Fixed Find responses in server.
 
