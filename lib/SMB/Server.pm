@@ -137,6 +137,9 @@ sub on_command ($$$) {
 		elsif ($command->is('Ioctl') && $command->function == SMB::v2::Command::Ioctl::FSCTL_DFS_GET_REFERRALS) {
 			$error = SMB::STATUS_NOT_FOUND;
 		}
+		elsif ($command->is('Ioctl') && $command->function == SMB::v2::Command::Ioctl::FSCTL_PIPE_WAIT) {
+			$error = SMB::STATUS_OBJECT_NAME_NOT_FOUND;
+		}
 		elsif ($fid) {
 			$openfile = $connection->{openfiles}{$fid->[0], $fid->[1]}
 				or $error = SMB::STATUS_FILE_CLOSED;
