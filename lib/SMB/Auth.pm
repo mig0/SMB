@@ -186,10 +186,7 @@ sub load_user_passwords ($$) {
 	my %user_passwords = map {
 		s/^\s+//;
 		s/\s+$//;
-		if ($_ eq ':') {
-			$self->allow_anonymous(1);
-			next;
-		}
+		$self->allow_anonymous(1) if $_ eq ':';
 		my ($username, $hash_str) = split ':', $_;
 		my @hash_bytes = ($hash_str || '') =~ /^[0-9a-f]{64}$/
 			? map { chr(hex(substr($hash_str, $_ * 2, 2))) } 0 .. 31
