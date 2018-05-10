@@ -282,6 +282,7 @@ sub on_command ($$$) {
 			$error = SMB::STATUS_INVALID_PARAMETER unless defined $command->{files};
 		}
 		elsif ($command->is('ChangeNotify')) {
+			$command->header->aid(++$connection->{last_aid});
 			$error = SMB::STATUS_PENDING;
 		}
 		elsif ($command->is('Cancel')) {
@@ -310,6 +311,7 @@ sub run ($) {
 				my $connection = $self->add_connection(
 					$client_socket, ++$self->{client_id},
 					trees     => [],
+					last_aid  => 0,
 					last_fid  => 0,
 					chain_fid => undef,
 					openfiles => {},
