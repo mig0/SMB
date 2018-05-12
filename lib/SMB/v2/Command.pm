@@ -18,11 +18,11 @@ package SMB::v2::Command;
 use strict;
 use warnings;
 
-no warnings 'portable';  # support 64-bit in form 0x...
-
 use parent 'SMB::Command';
 
 use SMB::v2::Header;
+
+use if (1 << 32 == 1), 'bigint';  # support native uint64 on 32-bit platforms
 
 sub new ($$%) {
 	my $class = shift;
@@ -80,18 +80,30 @@ sub is_valid_fid ($) {
 		&& defined $fid->[1] && $fid->[1] =~ /^\d+$/;
 }
 
+sub is_fid_filled ($$$) {
+	my $self = shift;
+	my $fid = shift;
+	my $pattern32 = shift;
+
+	return
+		($fid->[0] & 0xffffffff) == $pattern32 &&
+		($fid->[0] >> 32)        == $pattern32 &&
+		($fid->[1] & 0xffffffff) == $pattern32 &&
+		($fid->[1] >> 32)        == $pattern32;
+}
+
 sub is_fid_unset ($$) {
 	my $self = shift;
 	my $fid = shift;
 
-	return $fid->[0] == 0xffffffffffffffff && $fid->[1] == 0xffffffffffffffff;
+	return $self->is_fid_filled($fid, 0xffffffff);
 }
 
 sub is_fid_null ($$) {
 	my $self = shift;
 	my $fid = shift;
 
-	return $fid->[0] == 0 && $fid->[1] == 0;
+	return $self->is_fid_filled($fid, 0);
 }
 
 1;
