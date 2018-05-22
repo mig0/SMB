@@ -15,7 +15,9 @@ use SMB::Client;
 
 my $quiet = 0;
 my $verbose = 0;
-my $username = $ENV{USER} || $ENV{LOGNAME} || 'guest';
+my $username = undef;
+my $force_anon = 0;
+my $disable_anon = 0;
 
 sub show_usage (;$) {
 	my $is_error = shift || 0;
@@ -29,6 +31,8 @@ sub show_usage (;$) {
 			-q --quiet           do not show any errors
 			-v --verbose         print more messages (multiple)
 			-U --username u[%p]  SMB username and password (prompted if absent)
+			-a --force-anon      disable user logon even if anonymous logon failed
+			-A --disable-anon    disable anonymous logon if no username
 	};
 	$usage =~ s/^\n//; $usage =~ s/^\t\t?//mg;
 	print $out $usage;
@@ -40,6 +44,8 @@ GetOptions(
 	'q|quiet+'     => \$quiet,
 	'v|verbose+'   => \$verbose,
 	'U|username=s' => \$username,
+	'a|force-anon' => \$force_anon,
+	'A|disable-anon' => \$disable_anon,
 ) or show_usage(1);
 
 my $share_uri = shift || '//localhost/users';
@@ -85,10 +91,31 @@ sub prompt ($;$$) {
 	return $answer;
 }
 
-my $password = $username =~ s/%(.*)$// ? $1 : undef;
-$password //= prompt("Enter password for user '$username'", 0, 1);
+my $client = undef;
+my $password = undef;
 
-my $client = SMB::Client->new(
+$password = $1 if defined $username && $username =~ s/%(.*)$//;
+
+if ($force_anon || !defined $username && !$disable_anon) {
+	print "Connecting to $share_uri as anonymous user\n";
+	$client = SMB::Client->new(
+		$share_uri,
+		use_anon => 1,
+		username => $username,
+		password => $password,
+		quiet    => $quiet,
+		verbose  => $verbose,
+		log_level => SMB::LOG_LEVEL_INFO,
+	);
+	goto CONNECTED if $client->check_session;
+
+	die "Anonymous logon failed, skipping normal logon as requested\n" if $force_anon;
+}
+
+$username //= $ENV{USER} || $ENV{LOGNAME} || die "Please specify username to connect\n";
+$password //= prompt("Enter password as user '$username'", 0, 1);
+print "Connecting to $share_uri with user '$username'\n";
+$client = SMB::Client->new(
 	$share_uri,
 	username => $username,
 	password => $password,
@@ -97,6 +124,7 @@ my $client = SMB::Client->new(
 	log_level => SMB::LOG_LEVEL_INFO,
 );
 
+CONNECTED:
 my $tree = $client->connect_tree
 	or die "Failed to connect to $share_uri, aborting\n";
 

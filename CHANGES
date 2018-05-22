@@ -1,5 +1,10 @@
 Releases of SMB-Perl library and main changes.
 
+0.10 - 2018-05-??
+
+* Added support of anonymous logon in client (in addition to server).
+* Added flags --disable-anon and --force-anon to smb-client.
+
 0.09 - 2018-05-13
 
 * Added support for QueryInfo FILE and FS requests in server.

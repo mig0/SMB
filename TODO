@@ -1,0 +1,11 @@
+Common:
+* Add remaining SMB::v2::Command classes.
+
+Client:
+* Support tree-connect commands.
+
+Server:
+* Fix mechlist_mic in SessionSetup SPNEGO_ACCEPT_COMPLETED response.
+* Support more clients on Unix and Windows.
+* Log "Creating FILE" on action=created, and similar.
+* Support uploading file (Write).

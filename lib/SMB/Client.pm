@@ -68,12 +68,15 @@ sub connect ($$%) {
 	if ($options{just_socket}) {
 		$self->{socket} = $socket;
 	} else {
+		$self->set_credentials(%options);
+
 		my ($conn_key) = $self->add_connection(
 			$socket, --$self->{server_id},
 			addr     => $addr,
 			share    => $share,
-			username => $options{username},
-			password => $options{password},
+			use_anon => $self->use_anon,
+			username => $self->username,
+			password => $self->password,
 			tree     => undef,
 			cwd      => '',
 			openfiles => {},
@@ -87,6 +90,26 @@ sub connect ($$%) {
 	}
 
 	return $self;
+}
+
+sub set_credentials ($%) {
+	my $self = shift;
+	my %options = @_;
+
+	$options{$_} //= $self->{$_} for qw(use_anon username password);
+
+	if ($options{use_anon}) {
+		$self->{use_anon} = 1;
+		$self->{username} = '';
+		$self->{password} = '';
+	} else {
+		$self->{use_anon} = 0;
+		$self->{username} = $options{username};
+		$self->{password} = $options{password};
+	}
+
+	die "No username for client credentials\n" unless defined $self->username;
+	die "No password for client credentials\n" unless defined $self->password;
 }
 
 sub get_curr_connection ($) {
@@ -188,6 +211,7 @@ sub process_sessionsetup_if_needed ($$) {
 
 	$response = $self->process_request($connection, 'SessionSetup',
 		security_buffer => $connection->auth->generate_spnego(
+			use_anon => $connection->use_anon,
 			username => $connection->username,
 			password => $connection->password,
 		),
@@ -201,9 +225,9 @@ sub process_sessionsetup_if_needed ($$) {
 	return 0;
 }
 
-sub check_session ($$) {
+sub check_session ($;$) {
 	my $self = shift;
-	my $connection = shift;
+	my $connection = shift || $self->get_curr_connection;
 
 	return
 		$self->process_negotiate_if_needed($connection) &&
@@ -216,9 +240,11 @@ sub connect_tree ($%) {
 
 	my $connection = $self->get_curr_connection || return;
 
-	my ($addr, $share, $username, $password) =
+	my ($addr, $share) =
 		map { $options{$_} || $connection->{$_} || die "No $_ to connect_tree\n" }
-		qw(addr share username password);
+		qw(addr share);
+
+	$self->set_credentials(%options);
 
 	return unless $self->check_session($connection);
 

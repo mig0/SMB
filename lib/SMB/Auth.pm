@@ -538,6 +538,7 @@ sub generate_spnego ($%) {
 			[ ASN1_CONTEXT + 2, ASN1_BINARY, $self->packer->data ],
 		];
 	} elsif (!defined $self->client_challenge) {
+		$self->negotiate_flags(NTLMSSP_FLAGS_CLIENT | ($options{use_anon} ? 0x800 : 0));
 		my $username = $options{username} || '';
 		my $password = $options{password} || '';
 		$domain = $options{domain} || 'MYGROUP';
@@ -606,7 +607,7 @@ sub generate_spnego ($%) {
 			->uint16(16)
 			->uint16(16)
 			->uint32(88 + $nlen + length("$domain$username$host") * 2)
-			->uint32($self->negotiate_flags(NTLMSSP_FLAGS_CLIENT))
+			->uint32($self->negotiate_flags)
 			->bytes($lm_response)
 			->bytes($ntlm_response)
 			->str($domain)
@@ -672,6 +673,7 @@ SMB::Auth - Authentication mechanisms for SMB (NTLMSSP and more)
 
 	# SessionSetup Request 2
 	$buffer = $client_auth->generate_spnego(
+		use_anon => 0,
 		username => 'tom',
 		password => '%#',
 		domain => 'galaxy',
