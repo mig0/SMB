@@ -86,10 +86,10 @@ sub is_fid_filled ($$$) {
 	my $pattern32 = shift;
 
 	return
-		($fid->[0] & 0xffffffff) == $pattern32 &&
-		($fid->[0] >> 32)        == $pattern32 &&
-		($fid->[1] & 0xffffffff) == $pattern32 &&
-		($fid->[1] >> 32)        == $pattern32;
+		(($fid->[0] >>  0) & 0xffffffff) == $pattern32 &&
+		(($fid->[0] >> 32) & 0xffffffff) == $pattern32 &&
+		(($fid->[1] >>  0) & 0xffffffff) == $pattern32 &&
+		(($fid->[1] >> 32) & 0xffffffff) == $pattern32;
 }
 
 sub is_fid_unset ($$) {
