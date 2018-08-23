@@ -513,16 +513,33 @@ sub perform_tree_command ($$$@) {
 		);
 		return unless $response && $response->is_success;
 		my $fid = $response->fid;
-		$response = $self->process_request($connection, 'QueryDirectory',
-			file_pattern => $pattern,
-			fid => $fid,
-		);
-		my $files = $response && $response->is_success ? $response->files : undef;
+
+		my $files = [];
+		my $success = 1;
+		while (1) {
+			$response = $self->process_request($connection, 'QueryDirectory',
+				file_pattern => $pattern,
+				fid => $fid,
+			);
+			if ($response) {
+				last if $response->status == SMB::STATUS_NO_MORE_FILES;
+				unless ($response->is_success) {
+					$success = 0;
+					last;
+				}
+			}
+			else {
+				$success = 0;
+				last;
+			}
+			push @$files, @{$response->files};
+		}
+
 		$self->process_request($connection, 'Close',
 			fid => $fid,
 		);
 
-		return unless $files;
+		return unless $success;
 		return wantarray ? @$files : $files;
 	}
 	elsif ($command eq 'dnload') {
