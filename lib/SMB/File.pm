@@ -148,7 +148,7 @@ sub is_directory ($) {
 
 sub time_to_string ($;$) {
 	my $time = shift;
-	my $format = shift || "%4Y-%2m-%2d %2H:%2M";
+	my $format = shift || "%Y-%m-%d %H:%M";
 
 	return strftime($format, localtime $time);
 }
